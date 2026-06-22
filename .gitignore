@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# ML Data & Models (ignore raw files, keep folder structure)
+data/*
+models/*
+!data/.gitkeep
+!models/.gitkeep
+*.pkl
+*.pickle
+*.joblib
+
+# System files
+.DS_Store
+Thumbs.db
