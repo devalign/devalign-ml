@@ -4,7 +4,7 @@ import logging
 import argparse
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 # We assume config.py handles dotenv loading and setting these variables
@@ -33,10 +33,44 @@ class EducationEnum(str, Enum):
 class ExtractedJobData(BaseModel):
     hard_skills: List[str] = Field(description="Lista de habilidades técnicas, lenguajes, frameworks, herramientas (ej. Python, AWS, Docker).")
     soft_skills: List[str] = Field(description="Lista de habilidades blandas, interpersonales o de gestión (ej. Liderazgo, Comunicación).")
-    experience_years: str = Field(description="Años de experiencia requeridos (ej. '3 years', 'No especificado').")
-    salary: str = Field(description="Rango salarial o monto ofrecido (ej. '$2000 - $3000 USD').")
+    experience_years: Optional[str] = Field(None, description="Años de experiencia requeridos (ej. '3 years', 'No especificado').")
+    salary: Optional[str] = Field(None, description="Rango salarial o monto ofrecido (ej. '$2000 - $3000 USD').")
     education_level: EducationEnum = Field(description="Nivel educativo requerido.")
     modality: ModalityEnum = Field(description="Modalidad de trabajo.")
+
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_fields(cls, values: dict) -> dict:
+        if not isinstance(values, dict):
+            return values
+
+        # Normalize education_level
+        edu = values.get("education_level")
+        if isinstance(edu, str):
+            edu_lower = edu.lower().strip()
+            if "univ" in edu_lower:
+                values["education_level"] = "Universitaria"
+            elif "tecn" in edu_lower or "técn" in edu_lower:
+                values["education_level"] = "Técnica"
+            elif "post" in edu_lower or "pos" in edu_lower or "maes" in edu_lower or "doc" in edu_lower:
+                values["education_level"] = "Postgrado"
+            else:
+                values["education_level"] = "No especificado"
+
+        # Normalize modality
+        mod = values.get("modality")
+        if isinstance(mod, str):
+            mod_lower = mod.lower().strip()
+            if "remot" in mod_lower or "home" in mod_lower or "tele" in mod_lower:
+                values["modality"] = "Remoto"
+            elif "hibr" in mod_lower or "híbr" in mod_lower or "mix" in mod_lower:
+                values["modality"] = "Híbrido"
+            elif "presen" in mod_lower or "site" in mod_lower or "oficina" in mod_lower:
+                values["modality"] = "Presencial"
+            else:
+                values["modality"] = "No especificado"
+
+        return values
 
 
 # --- 3. Inicialización de Clientes ---
