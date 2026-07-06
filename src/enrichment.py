@@ -44,9 +44,25 @@ class ExtractedJobData(BaseModel):
         if not isinstance(values, dict):
             return values
 
+        # Normalize hard_skills to list
+        hs = values.get("hard_skills")
+        if isinstance(hs, str):
+            values["hard_skills"] = [hs]
+        elif hs is None or "hard_skills" not in values:
+            values["hard_skills"] = []
+
+        # Normalize soft_skills to list
+        ss = values.get("soft_skills")
+        if isinstance(ss, str):
+            values["soft_skills"] = [ss]
+        elif ss is None or "soft_skills" not in values:
+            values["soft_skills"] = []
+
         # Normalize education_level
         edu = values.get("education_level")
-        if isinstance(edu, str):
+        if edu is None:
+            values["education_level"] = "No especificado"
+        elif isinstance(edu, str):
             edu_lower = edu.lower().strip()
             if "univ" in edu_lower:
                 values["education_level"] = "Universitaria"
@@ -59,7 +75,9 @@ class ExtractedJobData(BaseModel):
 
         # Normalize modality
         mod = values.get("modality")
-        if isinstance(mod, str):
+        if mod is None:
+            values["modality"] = "No especificado"
+        elif isinstance(mod, str):
             mod_lower = mod.lower().strip()
             if "remot" in mod_lower or "home" in mod_lower or "tele" in mod_lower:
                 values["modality"] = "Remoto"
