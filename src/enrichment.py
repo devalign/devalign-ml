@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import argparse
+from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
@@ -15,17 +16,30 @@ from groq import Groq, APIError
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("Enrichment")
 
-# --- 1. Definición del Schema (Pydantic) ---
+# --- 1. Definición de Enums ---
+class ModalityEnum(str, Enum):
+    remote = "Remoto"
+    hybrid = "Híbrido"
+    onsite = "Presencial"
+    unknown = "No especificado"
+
+class EducationEnum(str, Enum):
+    universitaria = "Universitaria"
+    tecnica = "Técnica"
+    postgrado = "Postgrado"
+    unknown = "No especificado"
+
+# --- 2. Definición del Schema (Pydantic) ---
 class ExtractedJobData(BaseModel):
     hard_skills: List[str] = Field(description="Lista de habilidades técnicas, lenguajes, frameworks, herramientas (ej. Python, AWS, Docker).")
     soft_skills: List[str] = Field(description="Lista de habilidades blandas, interpersonales o de gestión (ej. Liderazgo, Comunicación).")
     experience_years: str = Field(description="Años de experiencia requeridos (ej. '3 years', 'No especificado').")
     salary: str = Field(description="Rango salarial o monto ofrecido (ej. '$2000 - $3000 USD').")
-    education_level: str = Field(description="Nivel educativo requerido (ej. 'Universitaria', 'Técnica', 'Bachiller').")
-    modality: str = Field(description="Modalidad de trabajo: 'Remoto', 'Presencial', o 'Híbrido'.")
+    education_level: EducationEnum = Field(description="Nivel educativo requerido.")
+    modality: ModalityEnum = Field(description="Modalidad de trabajo.")
 
 
-# --- 2. Inicialización de Clientes ---
+# --- 3. Inicialización de Clientes ---
 def get_supabase_client() -> Optional[Client]:
     if not config.SUPABASE_URL or not config.SUPABASE_KEY:
         logger.error("Credenciales de Supabase no configuradas.")
@@ -39,9 +53,7 @@ def get_groq_client() -> Optional[Groq]:
     return Groq(api_key=config.GROQ_API_KEY)
 
 
-# --- 3. Lógica de Enriquecimiento (LLM) con Tenacity ---
-# Reintenta si Groq devuelve error 429 o de conexión (Rate Limit).
-# Espera 2, 4, 8, hasta 60 segundos entre intentos. Máximo 5 intentos.
+# --- 4. Lógica de Enriquecimiento (LLM) con Tenacity ---
 @retry(
     wait=wait_exponential(multiplier=1, min=2, max=60),
     stop=stop_after_attempt(5),
@@ -49,12 +61,24 @@ def get_groq_client() -> Optional[Groq]:
     reraise=True
 )
 def enrich_description_with_groq(client: Groq, text: str) -> Optional[ExtractedJobData]:
-    # Instrucciones claras para el LLM
+    # Generamos una explicación amigable del formato esperado
+    expected_format = {
+        "hard_skills": ["Python", "AWS", "Docker"],
+        "soft_skills": ["Liderazgo", "Trabajo en equipo"],
+        "experience_years": "2 años",
+        "salary": "S/. 3000 - S/. 4000",
+        "education_level": "Universitaria",
+        "modality": "Remoto"
+    }
+
     prompt = (
         "Analiza la siguiente descripción de una oferta laboral de TI. "
-        "Extrae los datos estructurados basándote ÚNICAMENTE en el texto proporcionado. "
-        f"DEBES devolver un JSON que siga ESTRICTAMENTE este esquema:\n{json.dumps(ExtractedJobData.model_json_schema(), indent=2)}\n\n"
-        f"Descripción:\n{text[:6000]}"  # Truncamos a 6k chars para evitar romper la ventana de contexto
+        "Extrae los datos estructurados basándote ÚNICAMENTE en el texto proporcionado.\n\n"
+        "DEBES devolver un JSON con esta estructura exacta (mismas llaves y tipos de datos):\n"
+        f"{json.dumps(expected_format, indent=2)}\n\n"
+        f"Los valores permitidos para 'education_level' son: {[e.value for e in EducationEnum]}\n"
+        f"Los valores permitidos para 'modality' son: {[m.value for m in ModalityEnum]}\n\n"
+        f"Descripción de la oferta:\n{text[:6000]}"
     )
 
     try:
@@ -69,20 +93,16 @@ def enrich_description_with_groq(client: Groq, text: str) -> Optional[ExtractedJ
                     "content": prompt,
                 }
             ],
-            model="llama-3.1-8b-instant",  # Modelo rápido y barato
+            model="llama-3.1-8b-instant",
             response_format={"type": "json_object"},
-            # Aquí inyectamos implícitamente qué keys debe tener. Groq es muy bueno siguiendo schemas.
-            # Alternativamente en el prompt podíamos darle el JSON template. 
         )
         
         content = completion.choices[0].message.content
         if not content:
             return None
             
-        # Parsea el string devuelto a Pydantic para validar
         data_dict = json.loads(content)
         
-        # Validar y forzar default values si falla algo
         try:
             return ExtractedJobData(**data_dict)
         except Exception as pydantic_err:
@@ -97,7 +117,7 @@ def enrich_description_with_groq(client: Groq, text: str) -> Optional[ExtractedJ
         return None
 
 
-# --- 4. Flujo Principal de Lotes ---
+# --- 5. Flujo Principal de Lotes ---
 def run_enrichment(limit: int = 100):
     supabase = get_supabase_client()
     groq = get_groq_client()
@@ -106,82 +126,77 @@ def run_enrichment(limit: int = 100):
         logger.error("No se pudo iniciar los clientes. Abortando.")
         return
 
-    # Usaremos un archivo local temporal para trackear procesados si la DB no tiene columna 'ai_enriched'
-    PROCESSED_FILE = os.path.join(config.DATA_DIR, "ai_processed_ids.json")
-    processed_ids = set()
-    if os.path.exists(PROCESSED_FILE):
-        with open(PROCESSED_FILE, "r") as f:
-            try:
-                processed_ids = set(json.load(f))
-            except:
-                pass
-                
-    logger.info(f"Se han procesado {len(processed_ids)} ofertas históricamente.")
-
-    # 1. Fetch Offers
-    # Obtenemos ofertas. Asumimos que queremos las que no están en 'processed_ids'.
-    logger.info("Consultando Supabase por ofertas candidatas...")
+    logger.info("Consultando Supabase por ofertas candidatas (ai_enriched = False)...")
     
-    # Hacemos una consulta grande, pero filtramos a nivel memoria local las ya procesadas.
-    # Podría optimizarse si creamos un endpoint RPC o una vista.
-    response = supabase.table("job_offers").select("job_offer_id, full_description").execute()
-    all_offers = response.data or []
-    
-    candidates = [o for o in all_offers if o.get("full_description") and str(o["job_offer_id"]) not in processed_ids]
-    logger.info(f"Encontradas {len(candidates)} ofertas listas para enriquecer.")
-    
-    candidates_to_process = candidates[:limit]
+    response = (
+        supabase.table("job_offers")
+        .select("job_offer_id, full_description, raw_hard_skills, raw_soft_skills")
+        .eq("ai_enriched", False)
+        .limit(limit)
+        .execute()
+    )
+    candidates_to_process = response.data or []
+    logger.info(f"Encontradas {len(candidates_to_process)} ofertas listas para enriquecer.")
     
     if not candidates_to_process:
         logger.info("No hay nada que procesar.")
         return
 
-    # 2. Procesamiento
     updates_count = 0
     for offer in candidates_to_process:
         offer_id = str(offer["job_offer_id"])
         description = offer["full_description"]
+        existing_hard_skills = offer.get("raw_hard_skills") or []
+        existing_soft_skills = offer.get("raw_soft_skills") or []
         
+        if not description:
+            try:
+                supabase.table("job_offers").update({"ai_enriched": True}).eq("job_offer_id", offer_id).execute()
+            except Exception as e:
+                logger.error(f"Error marcando oferta vacía ID {offer_id}: {e}")
+            continue
+
         logger.info(f"Procesando oferta ID: {offer_id}...")
         
         enriched_data = enrich_description_with_groq(groq, description)
         
         if enriched_data:
-            # 3. Update Supabase
+            merged_hard_skills = list(set(existing_hard_skills + enriched_data.hard_skills))
+            merged_soft_skills = list(set(existing_soft_skills + enriched_data.soft_skills))
+            
             update_payload = {
-                "raw_hard_skills": enriched_data.hard_skills,
-                "raw_soft_skills": enriched_data.soft_skills,
+                "raw_hard_skills": merged_hard_skills,
+                "raw_soft_skills": merged_soft_skills,
+                "is_normalized": False,
+                "ai_enriched": True
             }
-            # Solo actualizamos los campos deterministas (salario, etc) si el LLM extrajo algo distinto de vacío
-            # y podríamos decidir si sobreescribimos o no. Lo ideal es no sobreescribir si ya había un buen valor.
-            # Por ahora, los mandamos a Supabase.
+            
             if enriched_data.experience_years and "no especific" not in enriched_data.experience_years.lower():
                 update_payload["experience_years"] = enriched_data.experience_years
                 
             if enriched_data.salary and "no especific" not in enriched_data.salary.lower():
                 update_payload["salary"] = enriched_data.salary
                 
-            if enriched_data.education_level and "no especific" not in enriched_data.education_level.lower():
-                update_payload["education_level"] = enriched_data.education_level
+            if enriched_data.education_level != EducationEnum.unknown:
+                update_payload["education_level"] = enriched_data.education_level.value
                 
-            if enriched_data.modality and "no especific" not in enriched_data.modality.lower():
-                update_payload["modality"] = enriched_data.modality
+            if enriched_data.modality != ModalityEnum.unknown:
+                update_payload["modality"] = enriched_data.modality.value
 
             try:
+                supabase.table("offer_skills").delete().eq("job_offer_id", offer_id).execute()
+                
                 supabase.table("job_offers").update(update_payload).eq("job_offer_id", offer_id).execute()
-                logger.info(f"[EXITO] ID {offer_id} actualizado.")
+                logger.info(f"[EXITO] ID {offer_id} enriquecido y reseteado para normalización.")
                 updates_count += 1
             except Exception as e:
                 logger.error(f"Error actualizando ID {offer_id} en Supabase: {e}")
-        
-        # Guardar en archivo local como procesado incluso si falló el parseo,
-        # para no entrar en loop infinito de procesar los mismos fallidos.
-        processed_ids.add(offer_id)
-        
-        # Persistir checkpoint
-        os.makedirs(config.DATA_DIR, exist_ok=True)
-        with open(PROCESSED_FILE, "w") as f:
-            json.dump(list(processed_ids), f)
+        else:
+            try:
+                supabase.table("job_offers").update({"ai_enriched": True}).eq("job_offer_id", offer_id).execute()
+                logger.warning(f"[OMITIDO] ID {offer_id} marcado como enriquecido (sin resultados válidos).")
+            except Exception as e:
+                logger.error(f"Error al omitir ID {offer_id} en Supabase: {e}")
 
     logger.info(f"Enriquecimiento finalizado. Se actualizaron {updates_count} ofertas en Supabase.")
 
