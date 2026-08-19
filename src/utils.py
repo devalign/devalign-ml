@@ -11,10 +11,22 @@ from src import config
 logger = logging.getLogger(__name__)
 
 def generate_cluster_names_batch(clusters_skills):
-    """Generates unique names in Spanish for a batch of clusters using Groq API."""
-    if not config.GROQ_API_KEY:
-        logger.warning("GROQ_API_KEY is not defined. Skipping batch cluster naming.")
-        return None
+    """Generates unique names in Spanish for a batch of clusters using configured LLM API (OpenAI or Groq)."""
+    if config.LLM_PROVIDER == "openai":
+        if not config.OPENAI_API_KEY:
+            logger.warning("OPENAI_API_KEY is not defined. Skipping batch cluster naming.")
+            return None
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {config.OPENAI_API_KEY}"}
+        model = config.LLM_MODEL or "gpt-4o-mini"
+    else:
+        if not config.GROQ_API_KEY:
+            logger.warning("GROQ_API_KEY is not defined. Skipping batch cluster naming.")
+            return None
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {config.GROQ_API_KEY}"}
+        model = config.LLM_MODEL or "llama-3.3-70b-versatile"
+
     try:
         prompt = (
             "You are a technical recruiter expert in IT. You are given a list of tech clusters, each characterized by its top skills. "
@@ -34,16 +46,16 @@ def generate_cluster_names_batch(clusters_skills):
             prompt += f"Cluster {idx}: <Name>\n"
 
         response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"},
+            url,
+            headers=headers,
             json={
-                "model": "llama-3.3-70b-versatile",
+                "model": model,
                 "messages": [
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.1,
             },
-            timeout=15
+            timeout=30
         )
         if response.status_code == 200:
             content = response.json()["choices"][0]["message"]["content"]
@@ -74,14 +86,25 @@ def generate_cluster_names_batch(clusters_skills):
 
 def generate_cluster_name(top_skills):
     """Generates a single cluster name as fallback."""
-    if not config.GROQ_API_KEY:
-        return f"Especialidad: {' + '.join([n.title() for n in top_skills[:3]])}"
+    if config.LLM_PROVIDER == "openai":
+        if not config.OPENAI_API_KEY:
+            return f"Especialidad: {' + '.join([n.title() for n in top_skills[:3]])}"
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {config.OPENAI_API_KEY}"}
+        model = config.LLM_MODEL or "gpt-4o-mini"
+    else:
+        if not config.GROQ_API_KEY:
+            return f"Especialidad: {' + '.join([n.title() for n in top_skills[:3]])}"
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {config.GROQ_API_KEY}"}
+        model = config.LLM_MODEL or "llama-3.3-70b-versatile"
+
     try:
         response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"},
+            url,
+            headers=headers,
             json={
-                "model": "llama-3.3-70b-versatile",
+                "model": model,
                 "messages": [
                     {
                         "role": "system",
