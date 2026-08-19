@@ -55,7 +55,7 @@ def generate_cluster_names_batch(clusters_skills):
                 ],
                 "temperature": 0.1,
             },
-            timeout=15
+            timeout=30
         )
         if response.status_code == 200:
             content = response.json()["choices"][0]["message"]["content"]
