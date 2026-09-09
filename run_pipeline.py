@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("run_pipeline")
 
 from src import config
-from src.data_loader import load_raw_data, process_job_offer_vectors, get_supabase_client
+from src.data_loader import load_raw_data, process_job_offer_vectors, get_supabase_client, GENERIC_OFFICE_SKILLS
 from src.clustering import ClusteringPipeline
 from src.utils import generate_cluster_names_batch, generate_cluster_name, plot_and_save_clusters
 
@@ -28,9 +28,10 @@ def deploy_to_supabase(client, valid_offers, final_labels, cluster_results, all_
     
     # 1. Reset job_offers cluster_id to NULL
     logger.info("Unlinking existing job offers from clusters...")
-    client.table("job_offers").update({"cluster_id": None}).neq(
-        "job_offer_id", "00000000-0000-0000-0000-000000000000"
-    ).execute()
+    try:
+        client.table("job_offers").update({"cluster_id": None}).not_.is_("cluster_id", "null").execute()
+    except Exception as e:
+        logger.warning(f"Unlinking job offers note: {e}")
 
     # 2. Delete existing diagnostics and clusters
     logger.info("Deleting old diagnostics and clusters...")
@@ -180,9 +181,12 @@ def main():
                     "frequency": int(count)
                 })
 
-        # Calculate skill frequencies
-        frequencies = cluster_df[all_skills].mean()
+        # Calculate skill frequencies (prioritizing technical skills over generic office tools)
+        tech_skills_in_cluster = [s for s in all_skills if s.lower() not in GENERIC_OFFICE_SKILLS]
+        frequencies = cluster_df[tech_skills_in_cluster].mean() if tech_skills_in_cluster else cluster_df[all_skills].mean()
         top_skills = frequencies[frequencies >= 0.15].sort_values(ascending=False)
+        if len(top_skills) < 3:
+            top_skills = frequencies.sort_values(ascending=False)
         top_5_names = list(top_skills.index[:5])
 
         skills_data = []

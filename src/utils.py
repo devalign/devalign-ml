@@ -29,13 +29,14 @@ def generate_cluster_names_batch(clusters_skills):
 
     try:
         prompt = (
-            "You are a technical recruiter expert in IT. You are given a list of tech clusters, each characterized by its top skills. "
-            "Your task is to assign a unique, concise, professional title (max 4 words) in Spanish for each IT specialty/cluster. "
-            "For example: 'Desarrollador Java Backend', 'Ingeniero de Datos', 'Administrador de Bases de Datos', 'Desarrollador React Frontend'.\n\n"
-            "CRITICAL RULES:\n"
-            "1. Every single cluster name MUST be unique and distinct. Do NOT reuse names like 'Analista de Datos' or 'Desarrollador Full Stack' for different clusters. Differentiate them using their specific dominant skills.\n"
-            "2. Be precise: if a cluster contains 'power bi' or 'tableau', prefer names like 'Analista de BI' or 'Especialista en Power BI'. If it contains only 'sql' and basic sheets, name it 'Analista de Datos Jr' or 'Analista de Soporte SQL'.\n"
-            "3. Respond ONLY with the list of cluster names in the exact format shown below, without any intro or outro text.\n\n"
+            "You are a principal technical recruiter and IT taxonomy expert. You are given a list of tech clusters, each characterized by its top skills.\n"
+            "Your task is to assign a unique, concise, professional title (max 4 words) in Spanish representing a true IT software engineering / tech macro-profile for each cluster.\n"
+            "Valid examples: 'Desarrollador Full Stack', 'Desarrollador Backend Python', 'Desarrollador Frontend React', 'Ingeniero Cloud DevOps', 'Científico de Datos & ML', 'Ingeniero de Datos', 'Especialista QA Automation', 'Diseñador UX/UI', 'Desarrollador Móvil Android'.\n\n"
+            "STRICT RULES:\n"
+            "1. NO SPREADSHEETS / ADMINISTRATIVE TITLES: Never use names like 'Analista de Hojas', 'Especialista en Excel', or generic non-tech titles.\n"
+            "2. STRICTLY UNIQUE: Every cluster title MUST be 100% unique across all clusters. Never repeat a title.\n"
+            "3. MACRO-PROFILES: Group related tech into solid professional market roles in Spanish.\n"
+            "4. Respond ONLY with the list of cluster names in the exact format shown below, without any intro or outro text.\n\n"
             "Input clusters:\n"
         )
         for idx, skills in enumerate(clusters_skills):
@@ -79,7 +80,21 @@ def generate_cluster_names_batch(clusters_skills):
                 else:
                     logger.warning(f"Missing cluster name for index {idx} in batch response")
                     return None
-            return results
+
+            # Deduplicate any identical names
+            seen = {}
+            deduped_results = []
+            for idx, name in enumerate(results):
+                if name in seen:
+                    seen[name] += 1
+                    sk_list = clusters_skills[idx]
+                    suffix = sk_list[0].title() if sk_list else str(seen[name])
+                    deduped_results.append(f"{name} ({suffix})")
+                else:
+                    seen[name] = 1
+                    deduped_results.append(name)
+
+            return deduped_results
     except Exception as e:
         logger.warning(f"LLM batch naming failed: {e}")
     return None
