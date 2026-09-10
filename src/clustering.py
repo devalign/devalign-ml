@@ -64,39 +64,15 @@ class ClusteringPipeline:
         except Exception as e:
             logger.error(f"Failed to calculate silhouette score: {e}")
 
-        # Compute reduced-space centroids for noise-reassignment
-        centroids_reduced = {}
-        for k in non_noise_labels:
-            cluster_points = X_reduced[labels == k]
-            centroids_reduced[k] = np.mean(cluster_points, axis=0)
-
-        # Reassign noise points to closest cluster centroid in UMAP space
-        final_labels = []
-        noise_reassigned_count = 0
-        for i, label in enumerate(labels):
-            if label != -1:
-                final_labels.append(label)
-            else:
-                point = X_reduced[i]
-                best_k = -1
-                min_dist = float('inf')
-                for k, centroid in centroids_reduced.items():
-                    dist = np.linalg.norm(point - centroid)
-                    if dist < min_dist:
-                        min_dist = dist
-                        best_k = k
-                final_labels.append(best_k)
-                noise_reassigned_count += 1
-
-        final_labels = np.array(final_labels)
-        logger.info(f"Reassigned {noise_reassigned_count} noise offers to nearest cluster.")
+        # Preserve HDBSCAN noise points as -1 (unassigned outliers) to avoid cluster pollution
+        final_labels = np.array(labels)
+        noise_count = int(np.sum(final_labels == -1))
+        logger.info(f"HDBSCAN: Preserving {noise_count} noise offers as unassigned (-1).")
 
         # Compute 1024d centroid vectors for each cluster (using core non-noise members)
         cluster_centroids_1024d = {}
         for k in non_noise_labels:
             core_indices = [idx for idx, l in enumerate(labels) if l == k]
-            if not core_indices:
-                core_indices = [idx for idx, l in enumerate(final_labels) if l == k]
             core_vectors = vectors[core_indices]
             cluster_centroids_1024d[k] = np.mean(core_vectors, axis=0).tolist()
 
