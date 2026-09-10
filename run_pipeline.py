@@ -19,6 +19,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Devalign ML Clustering Pipeline (UMAP + HDBSCAN)")
     parser.add_argument("--deploy", action="store_true", help="Deploy/write results to Supabase database.")
     parser.add_argument("--no-cache", action="store_true", help="Bypass local JSON cache and force DB fetch.")
+    parser.add_argument("--portals", nargs="+", default=["computrabajo", "getonboard"], help="Portals to include in clustering (default: computrabajo getonboard).")
     parser.add_argument("--plot-name", type=str, default="hdbscan_clusters.png", help="Filename of the saved plot.")
     return parser.parse_args()
 
@@ -110,7 +111,7 @@ def main():
     
     # 1. Load Data
     try:
-        skills_data, offers_data = load_raw_data(use_cache=not args.no_cache)
+        skills_data, offers_data = load_raw_data(use_cache=not args.no_cache, target_portals=args.portals)
     except Exception as e:
         logger.critical(f"Data loading failed: {e}")
         sys.exit(1)

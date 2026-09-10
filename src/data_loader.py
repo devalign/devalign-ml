@@ -24,16 +24,21 @@ def fetch_skills_from_supabase(client):
     skills_resp = client.table("skills").select("name, embedding, skill_aliases(alias_name)").execute()
     return skills_resp.data if skills_resp else []
 
-def fetch_job_offers_from_supabase(client):
-    logger.info("Fetching job offers from Supabase...")
+def fetch_job_offers_from_supabase(client, target_portals=("computrabajo", "getonboard")):
+    logger.info(f"Fetching job offers from Supabase (target_portals: {target_portals})...")
     offers = []
     limit = 1000
     offset = 0
     while True:
-        resp = (
+        query = (
             client.table("job_offers")
-            .select("job_offer_id, job_title, raw_hard_skills")
-            .range(offset, offset + limit - 1)
+            .select("job_offer_id, job_title, raw_hard_skills, portal")
+        )
+        if target_portals:
+            query = query.in_("portal", list(target_portals))
+
+        resp = (
+            query.range(offset, offset + limit - 1)
             .execute()
         )
         if not resp.data:
@@ -42,9 +47,10 @@ def fetch_job_offers_from_supabase(client):
         if len(resp.data) < limit:
             break
         offset += limit
+    logger.info(f"Loaded {len(offers)} job offers matching portals {target_portals}.")
     return offers
 
-def load_raw_data(use_cache=True):
+def load_raw_data(use_cache=True, target_portals=("computrabajo", "getonboard")):
     """Loads raw skills and job offers, using local json cache if available."""
     skills_cache_path = os.path.join(config.DATA_DIR, "raw_skills.json")
     offers_cache_path = os.path.join(config.DATA_DIR, "raw_job_offers.json")
@@ -69,7 +75,7 @@ def load_raw_data(use_cache=True):
     if client:
         try:
             skills_data = fetch_skills_from_supabase(client)
-            offers_data = fetch_job_offers_from_supabase(client)
+            offers_data = fetch_job_offers_from_supabase(client, target_portals=target_portals)
             
             # Save cache
             os.makedirs(config.DATA_DIR, exist_ok=True)
