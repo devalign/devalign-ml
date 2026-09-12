@@ -21,8 +21,24 @@ def get_supabase_client():
 
 def fetch_skills_from_supabase(client):
     logger.info("Fetching skills, embeddings, and aliases from Supabase...")
-    skills_resp = client.table("skills").select("name, embedding, skill_aliases(alias_name)").execute()
-    return skills_resp.data if skills_resp else []
+    skills = []
+    limit = 1000
+    offset = 0
+    while True:
+        resp = (
+            client.table("skills")
+            .select("name, embedding, skill_aliases(alias_name)")
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
+        if not resp.data:
+            break
+        skills.extend(resp.data)
+        if len(resp.data) < limit:
+            break
+        offset += limit
+    logger.info(f"Loaded {len(skills)} skills from Supabase.")
+    return skills
 
 def fetch_job_offers_from_supabase(client, target_portals=("computrabajo", "getonboard")):
     logger.info(f"Fetching job offers from Supabase (target_portals: {target_portals})...")
@@ -161,6 +177,25 @@ def process_job_offer_vectors(skills_data, offers_data):
 
     logger.info(f"Loaded {len(skill_to_embedding)} canonical skills with embeddings.")
 
+    # Calculate document frequency for smooth IDF weighting
+    import math
+    import collections
+    doc_freq = collections.Counter()
+    for row in offers_data:
+        job_title = (row.get("job_title") or "").strip()
+        job_title_lower = job_title.lower()
+        if not job_title:
+            continue
+
+        raw_skills = row.get("raw_hard_skills") or []
+        for s in set(raw_skills):
+            clean_s = s.lower().strip()
+            canon = alias_to_canonical.get(clean_s, clean_s).lower()
+            doc_freq[canon] += 1
+
+    N = len(offers_data)
+    idf = {s: math.log(1.0 + N / (df + 1.0)) for s, df in doc_freq.items()}
+
     valid_offers = []
     for row in offers_data:
         job_title = (row.get("job_title") or "").strip()
@@ -202,21 +237,29 @@ def process_job_offer_vectors(skills_data, offers_data):
         if not tech_skills:
             continue
 
-        # Pool embeddings using only technical skills
+        # Pool embeddings using smooth IDF weighting to preserve technology distinctiveness
         embeddings = []
+        weights = []
+        valid_tech_skills = []
         for s in tech_skills:
             emb = skill_to_embedding.get(s.lower())
             if emb:
                 embeddings.append(emb)
+                valid_tech_skills.append(s)
+                w = idf.get(s.lower(), 1.0)
+                weights.append(w)
 
         if embeddings:
-            offer_vector = np.mean(embeddings, axis=0)
+            w_arr = np.array(weights, dtype=np.float32)
+            w_arr = w_arr / (np.sum(w_arr) + 1e-9)
+            offer_vector = np.sum(np.array(embeddings, dtype=np.float32) * w_arr[:, np.newaxis], axis=0)
             valid_offers.append({
                 "id": row["job_offer_id"],
                 "job_title": job_title,
-                "skills": list(tech_skills),
+                "skills": valid_tech_skills,
                 "vector": offer_vector
             })
 
     logger.info(f"Offers with valid tech skill embeddings: {len(valid_offers)} / {len(offers_data)}.")
     return valid_offers, alias_to_canonical
+
