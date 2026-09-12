@@ -185,9 +185,11 @@ def main():
         # Calculate skill frequencies (prioritizing technical skills over generic office tools)
         tech_skills_in_cluster = [s for s in all_skills if s.lower() not in GENERIC_OFFICE_SKILLS]
         frequencies = cluster_df[tech_skills_in_cluster].mean() if tech_skills_in_cluster else cluster_df[all_skills].mean()
-        top_skills = frequencies[frequencies >= 0.15].sort_values(ascending=False)
-        if len(top_skills) < 3:
-            top_skills = frequencies.sort_values(ascending=False)
+        positive_frequencies = frequencies[frequencies > 0.0].sort_values(ascending=False)
+        meaningful_skills = positive_frequencies[positive_frequencies >= 0.10]
+        if len(meaningful_skills) == 0:
+            meaningful_skills = positive_frequencies.head(3)
+        top_skills = meaningful_skills
         top_5_names = list(top_skills.index[:5])
 
         skills_data = []
@@ -213,10 +215,16 @@ def main():
             "growth_percentage": round(np.random.uniform(5.0, 25.0), 1)  # Mocked growth
         })
 
-    # 6. Generate Cluster Names via Groq
+    # 6. Generate Cluster Names via LLM
     logger.info("Generating cluster names...")
-    all_clusters_skills = [cr["top_5_names"] for cr in cluster_results]
-    batch_names = generate_cluster_names_batch(all_clusters_skills)
+    all_clusters_data = [
+        {
+            "skills": cr["top_5_names"],
+            "roles": [r["title"] for r in cr["compatible_roles"][:2]]
+        }
+        for cr in cluster_results
+    ]
+    batch_names = generate_cluster_names_batch(all_clusters_data)
 
     if batch_names and len(batch_names) == len(cluster_results):
         for idx, name in enumerate(batch_names):
@@ -227,7 +235,8 @@ def main():
     else:
         logger.warning("Falling back to single-naming queries.")
         for cr in cluster_results:
-            name = generate_cluster_name(cr["top_5_names"])
+            top_roles = [r["title"] for r in cr["compatible_roles"][:2]]
+            name = generate_cluster_name(cr["top_5_names"], top_roles=top_roles)
             cr["name"] = name
             cr["description"] = f"Dominant skills: {', '.join([n.title() for n in cr['top_5_names']])}. Size: {cr['job_offer_count']} offers."
             logger.info(f"Cluster {cr['cluster_index']}: {name} ({cr['job_offer_count']} offers)")

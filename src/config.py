@@ -20,8 +20,8 @@ UMAP_METRIC = os.environ.get("UMAP_METRIC", "cosine")
 UMAP_RANDOM_STATE = int(os.environ.get("UMAP_RANDOM_STATE", 42))
 
 # HDBSCAN Hyperparameters
-HDBSCAN_MIN_CLUSTER_SIZE = int(os.environ.get("HDBSCAN_MIN_CLUSTER_SIZE", 15))
-HDBSCAN_MIN_SAMPLES = int(os.environ.get("HDBSCAN_MIN_SAMPLES", 2))
+HDBSCAN_MIN_CLUSTER_SIZE = int(os.environ.get("HDBSCAN_MIN_CLUSTER_SIZE", 32))
+HDBSCAN_MIN_SAMPLES = int(os.environ.get("HDBSCAN_MIN_SAMPLES", 5))
 HDBSCAN_METRIC = os.environ.get("HDBSCAN_METRIC", "euclidean")
 
 # Local Directories
