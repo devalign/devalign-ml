@@ -96,6 +96,7 @@ def generate_cluster_names_batch(clusters_skills):
                     seen[name] += 1
                     item = clusters_skills[idx]
                     sk_list = item.get("skills", []) if isinstance(item, dict) else item
+
                     suffix = sk_list[0].title() if sk_list else str(seen[name])
                     deduped_results.append(f"{name} ({suffix})")
                 else:

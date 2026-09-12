@@ -190,6 +190,7 @@ def main():
         if len(meaningful_skills) == 0:
             meaningful_skills = positive_frequencies.head(3)
         top_skills = meaningful_skills
+
         top_5_names = list(top_skills.index[:5])
 
         skills_data = []

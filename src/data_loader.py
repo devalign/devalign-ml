@@ -182,6 +182,11 @@ def process_job_offer_vectors(skills_data, offers_data):
     import collections
     doc_freq = collections.Counter()
     for row in offers_data:
+        job_title = (row.get("job_title") or "").strip()
+        job_title_lower = job_title.lower()
+        if not job_title:
+            continue
+
         raw_skills = row.get("raw_hard_skills") or []
         for s in set(raw_skills):
             clean_s = s.lower().strip()
@@ -257,3 +262,4 @@ def process_job_offer_vectors(skills_data, offers_data):
 
     logger.info(f"Offers with valid tech skill embeddings: {len(valid_offers)} / {len(offers_data)}.")
     return valid_offers, alias_to_canonical
+
