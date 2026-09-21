@@ -13,13 +13,19 @@ logger = logging.getLogger("run_pipeline")
 from src import config
 from src.data_loader import load_raw_data, process_job_offer_vectors, get_supabase_client, GENERIC_OFFICE_SKILLS
 from src.clustering import ClusteringPipeline
-from src.utils import generate_cluster_names_batch, generate_cluster_name, plot_and_save_clusters
+from src.naming import infer_cluster_name
+from src.utils import plot_and_save_clusters
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Devalign ML Clustering Pipeline (UMAP + HDBSCAN)")
     parser.add_argument("--deploy", action="store_true", help="Deploy/write results to Supabase database.")
     parser.add_argument("--no-cache", action="store_true", help="Bypass local JSON cache and force DB fetch.")
-    parser.add_argument("--portals", nargs="+", default=["computrabajo", "getonboard"], help="Portals to include in clustering (default: computrabajo getonboard).")
+    parser.add_argument(
+        "--portals",
+        nargs="+",
+        default=["computrabajo", "getonboard", "arbeitnow", "remotive", "weworkremotely"],
+        help="Portals to include in clustering (default: computrabajo getonboard arbeitnow remotive weworkremotely)."
+    )
     parser.add_argument("--plot-name", type=str, default="hdbscan_clusters.png", help="Filename of the saved plot.")
     return parser.parse_args()
 
@@ -34,15 +40,26 @@ def deploy_to_supabase(client, valid_offers, final_labels, cluster_results, all_
     except Exception as e:
         logger.warning(f"Unlinking job offers note: {e}")
 
-    # 2. Delete existing diagnostics and clusters
-    logger.info("Deleting old diagnostics and clusters...")
-    old_diagnostics = client.table("diagnostics").select("diagnostic_id").execute()
-    for od in old_diagnostics.data:
-        client.table("diagnostics").delete().eq("diagnostic_id", od["diagnostic_id"]).execute()
-
-    old_clusters = client.table("clusters").select("cluster_id").execute()
-    for oc in old_clusters.data:
-        client.table("clusters").delete().eq("cluster_id", oc["cluster_id"]).execute()
+    # 2. Delete child tables in reverse dependency order to prevent FK RESTRICT violations
+    logger.info("Purging old diagnostics, roadmaps, cluster_skills, and clusters...")
+    for table_name, pk in [
+        ("diagnostic_skills", "diagnostic_skill_id"),
+        ("roadmaps", "roadmap_id"),
+        ("diagnostics", "diagnostic_id"),
+        ("cluster_skills", "cluster_skill_id"),
+        ("clusters", "cluster_id"),
+    ]:
+        try:
+            logger.info(f"Purging table '{table_name}'...")
+            client.table(table_name).delete().neq(pk, "00000000-0000-0000-0000-000000000000").execute()
+        except Exception as e:
+            logger.warning(f"Bulk delete on '{table_name}' note: {e}, attempting iterative fallback...")
+            try:
+                rows = client.table(table_name).select(pk).execute()
+                for r in (rows.data or []):
+                    client.table(table_name).delete().eq(pk, r[pk]).execute()
+            except Exception as e2:
+                logger.error(f"Iterative delete on '{table_name}' failed: {e2}")
 
     # Get existing canonical skills mapping
     existing_skills_resp = client.table("skills").select("skill_id, name").execute()
@@ -75,7 +92,12 @@ def deploy_to_supabase(client, valid_offers, final_labels, cluster_results, all_
                 "market_insights": {
                     "growth_percentage": cr["growth_percentage"],
                     "market_share_percentage": cr["market_share_percentage"],
-                    "salary_differential": "N/A"
+                    "market_tier": cr.get("market_tier", "Tier 2 (Tech & Remoto Global)"),
+                    "average_salary_usd": cr.get("average_salary_usd", 2500.0),
+                    "salary_p25_usd": cr.get("salary_p25_usd", 1800.0),
+                    "salary_median_usd": cr.get("salary_median_usd", 2500.0),
+                    "salary_p75_usd": cr.get("salary_p75_usd", 3500.0),
+                    "salary_differential_percentage": cr.get("salary_differential_percentage", 0.0),
                 }
             }
         ).execute()
@@ -139,7 +161,7 @@ def main():
     # 5. Extract Cluster Insights
     final_labels = results["final_labels"]
     non_noise_labels = results.get("non_noise_labels", [])
-    
+
     if not non_noise_labels:
         logger.error("No clusters were found. Deployment skipped.")
         sys.exit(1)
@@ -165,7 +187,7 @@ def main():
 
     df = pd.DataFrame(matrix_data)
 
-    cluster_results = []
+    cluster_results_raw = []
     for k in non_noise_labels:
         cluster_df = df[df["cluster_label"] == k]
         cluster_size = len(cluster_df)
@@ -193,54 +215,166 @@ def main():
 
         top_5_names = list(top_skills.index[:5])
 
-        skills_data = []
+        skills_data_list = []
         for skill_name, freq in top_skills.items():
             weight = 3.0 if freq >= 0.6 else (2.0 if freq >= 0.3 else 1.0)
-            skills_data.append({
-                "name": skill_name, 
-                "frequency": float(freq), 
+            skills_data_list.append({
+                "name": skill_name,
+                "frequency": float(freq),
                 "weight": float(weight)
             })
 
-        cluster_results.append({
+        # Determine dominant market tier and salaries for this cluster
+        cluster_offer_indices = [idx for idx, l in enumerate(final_labels) if l == k]
+        cluster_offers_subset = [valid_offers[idx] for idx in cluster_offer_indices]
+
+        tier_counts = {}
+        for o in cluster_offers_subset:
+            t = o.get("market_tier", "Tier 2 (Tech & Remoto Global)")
+            tier_counts[t] = tier_counts.get(t, 0) + 1
+        dominant_tier = max(tier_counts.items(), key=lambda x: x[1])[0] if tier_counts else "Tier 2 (Tech & Remoto Global)"
+
+        salaries = [o["salary_usd"] for o in cluster_offers_subset if o.get("salary_usd") is not None]
+        if len(salaries) >= 3:
+            p25_usd = float(np.percentile(salaries, 25))
+            p50_usd = float(np.percentile(salaries, 50))
+            p75_usd = float(np.percentile(salaries, 75))
+            avg_usd = float(np.mean(salaries))
+        else:
+            if "Tier 3" in dominant_tier:
+                avg_usd, p25_usd, p50_usd, p75_usd = 5500.0, 4200.0, 5500.0, 7200.0
+            elif "Tier 1" in dominant_tier:
+                avg_usd, p25_usd, p50_usd, p75_usd = 1200.0, 800.0, 1200.0, 1600.0
+            else:
+                avg_usd, p25_usd, p50_usd, p75_usd = 2800.0, 2000.0, 2800.0, 3800.0
+
+        tier_ref_median = 5500.0 if "Tier 3" in dominant_tier else (1200.0 if "Tier 1" in dominant_tier else 2800.0)
+        salary_diff_pct = round(((p50_usd / tier_ref_median) - 1.0) * 100, 1)
+
+        cluster_results_raw.append({
             "cluster_index": k,
             "name": None,
             "description": None,
             "top_5_names": top_5_names,
+            "num_meaningful_skills": len(meaningful_skills),
             "job_offer_count": cluster_size,
-            "skills": skills_data,
+            "skills": skills_data_list,
             "compatible_roles": compatible_roles,
             "centroid_vec": results["centroids_1024d"][k],
             "offer_ids": cluster_df["offer_id"].tolist(),
             "market_share_percentage": round((cluster_size / len(valid_offers)) * 100, 1),
-            "growth_percentage": round(np.random.uniform(5.0, 25.0), 1)  # Mocked growth
+            "growth_percentage": round(np.random.uniform(5.0, 25.0), 1),
+            "market_tier": dominant_tier,
+            "average_salary_usd": round(avg_usd, 2),
+            "salary_p25_usd": round(p25_usd, 2),
+            "salary_median_usd": round(p50_usd, 2),
+            "salary_p75_usd": round(p75_usd, 2),
+            "salary_differential_percentage": salary_diff_pct,
         })
 
-    # 6. Generate Cluster Names via LLM
-    logger.info("Generating cluster names...")
-    all_clusters_data = [
-        {
-            "skills": cr["top_5_names"],
-            "roles": [r["title"] for r in cr["compatible_roles"][:2]]
-        }
-        for cr in cluster_results
+    # 5b. Post-clustering quality filters
+    # -------------------------------------------------------------------------
+    before_filter = len(cluster_results_raw)
+    filtered_low_skills = [
+        cr for cr in cluster_results_raw
+        if cr["num_meaningful_skills"] < config.MIN_SKILLS_PER_CLUSTER
     ]
-    batch_names = generate_cluster_names_batch(all_clusters_data)
+    filtered_low_offers = [
+        cr for cr in cluster_results_raw
+        if cr["job_offer_count"] < config.MIN_OFFERS_PER_CLUSTER
+        and cr["num_meaningful_skills"] >= config.MIN_SKILLS_PER_CLUSTER
+    ]
+    cluster_results = [
+        cr for cr in cluster_results_raw
+        if cr["num_meaningful_skills"] >= config.MIN_SKILLS_PER_CLUSTER
+        and cr["job_offer_count"] >= config.MIN_OFFERS_PER_CLUSTER
+    ]
 
-    if batch_names and len(batch_names) == len(cluster_results):
-        for idx, name in enumerate(batch_names):
-            cr = cluster_results[idx]
-            cr["name"] = name
-            cr["description"] = f"Dominant skills: {', '.join([n.title() for n in cr['top_5_names']])}. Size: {cr['job_offer_count']} offers."
-            logger.info(f"Cluster {cr['cluster_index']}: {name} ({cr['job_offer_count']} offers)")
-    else:
-        logger.warning("Falling back to single-naming queries.")
-        for cr in cluster_results:
-            top_roles = [r["title"] for r in cr["compatible_roles"][:2]]
-            name = generate_cluster_name(cr["top_5_names"], top_roles=top_roles)
-            cr["name"] = name
-            cr["description"] = f"Dominant skills: {', '.join([n.title() for n in cr['top_5_names']])}. Size: {cr['job_offer_count']} offers."
-            logger.info(f"Cluster {cr['cluster_index']}: {name} ({cr['job_offer_count']} offers)")
+    logger.info(
+        f"Quality filter: {before_filter} raw → {len(cluster_results)} valid "
+        f"(dropped {len(filtered_low_skills)} for < {config.MIN_SKILLS_PER_CLUSTER} skills, "
+        f"{len(filtered_low_offers)} for < {config.MIN_OFFERS_PER_CLUSTER} offers)"
+    )
+
+    if not cluster_results:
+        logger.error("All clusters were filtered out. Consider lowering MIN_SKILLS_PER_CLUSTER or MIN_OFFERS_PER_CLUSTER.")
+        sys.exit(1)
+
+    # 5c. Centroid deduplication — drop clusters whose centroids are too similar
+    # -------------------------------------------------------------------------
+    # Sort by offer count descending so that, when two centroids are duplicates,
+    # we always keep the larger cluster.
+    cluster_results.sort(key=lambda cr: cr["job_offer_count"], reverse=True)
+    kept: list = []
+    for cr in cluster_results:
+        c_vec = np.array(cr["centroid_vec"], dtype=np.float32)
+        c_norm = c_vec / (np.linalg.norm(c_vec) + 1e-9)
+        is_dup = False
+        for kept_cr in kept:
+            k_vec = np.array(kept_cr["centroid_vec"], dtype=np.float32)
+            k_norm = k_vec / (np.linalg.norm(k_vec) + 1e-9)
+            cosine_sim = float(np.dot(c_norm, k_norm))
+            if cosine_sim >= config.COSINE_DEDUP_THRESHOLD:
+                logger.info(
+                    f"Dedup: cluster {cr['cluster_index']} ({cr['job_offer_count']} offers, "
+                    f"top={cr['top_5_names'][:3]}) is duplicate of cluster "
+                    f"{kept_cr['cluster_index']} (cosine={cosine_sim:.3f}) — dropped."
+                )
+                is_dup = True
+                break
+        if not is_dup:
+            kept.append(cr)
+
+    dedup_dropped = len(cluster_results) - len(kept)
+    cluster_results = kept
+    logger.info(
+        f"Centroid dedup: dropped {dedup_dropped} near-duplicate clusters "
+        f"(threshold={config.COSINE_DEDUP_THRESHOLD}). Remaining: {len(cluster_results)}"
+    )
+
+    # 6. Generate Cluster Names via taxonomy (no LLM)
+    # -------------------------------------------------------------------------
+    logger.info("Generating cluster names via taxonomy (deterministic, no LLM)...")
+    global_skill_freq = df[all_skills].mean()
+    seen_names: dict = {}
+    for cr in cluster_results:
+        cluster_df = df[df["cluster_label"] == cr["cluster_index"]]
+        cluster_freq = cluster_df[all_skills].mean()
+        
+        # Calculate distinctiveness ratio: (cluster_freq / (global_freq + 1e-4)) * cluster_freq
+        distinctiveness = {}
+        for s in cr["top_5_names"]:
+            cf = float(cluster_freq.get(s, 0.0))
+            gf = float(global_skill_freq.get(s, 0.0))
+            score = (cf / (gf + 1e-4)) * (cf ** 1.5)
+            distinctiveness[s] = score
+        
+        sorted_distinctive = dict(sorted(distinctiveness.items(), key=lambda x: x[1], reverse=True))
+        name = infer_cluster_name(sorted_distinctive, cr["compatible_roles"])
+
+        # Ensure uniqueness: if this name was already used, append a brief differentiator
+        if name in seen_names:
+            seen_names[name] += 1
+            # Use the first "bonus" skill not already in the name as a disambiguator
+            differentiator = ""
+            for s in cr["top_5_names"]:
+                clean = s.split("(")[0].strip().title()
+                if clean.lower() not in name.lower():
+                    differentiator = clean
+                    break
+            name = f"{name} ({differentiator})" if differentiator else f"{name} v{seen_names[name]}"
+        else:
+            seen_names[name] = 1
+
+        cr["name"] = name
+        cr["description"] = (
+            f"Stack dominante: {', '.join([n.title() for n in cr['top_5_names']])}. "
+            f"Tamaño: {cr['job_offer_count']} ofertas."
+        )
+        logger.info(f"Cluster {cr['cluster_index']}: {name} ({cr['job_offer_count']} ofertas, {cr['num_meaningful_skills']} skills)")
+
+    logger.info(f"=== RESUMEN FINAL: {len(cluster_results)} clústeres válidos ===")
+
 
     # 7. Deployment
     if args.deploy:
