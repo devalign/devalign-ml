@@ -40,7 +40,82 @@ def fetch_skills_from_supabase(client):
     logger.info(f"Loaded {len(skills)} skills from Supabase.")
     return skills
 
-def fetch_job_offers_from_supabase(client, target_portals=("computrabajo", "getonboard")):
+DEFAULT_TARGET_PORTALS = ("computrabajo", "getonboard", "arbeitnow", "remotive", "weworkremotely")
+
+def classify_market_tier(offer: dict) -> str:
+    """Classifies a job offer into Tier 1 (LATAM Local), Tier 2 (LATAM Tech & Startups Remoto), or Tier 3 (Europa / Alemania)."""
+    portal = (offer.get("portal") or "").lower().strip()
+    country = (offer.get("country") or "").upper().strip()
+    location = (offer.get("location") or "").lower()
+
+    if (
+        portal == "arbeitnow"
+        or country in ("DE", "AT", "CH", "ES", "UK", "FR", "NL", "EU")
+        or any(c in location for c in ("germany", "deutschland", "berlin", "munich", "hamburg", "europe", "frankfurt"))
+    ):
+        return "Tier 3 (Europa / Alemania)"
+    elif (
+        portal in ("getonboard", "remotive", "weworkremotely")
+        or country in ("US", "CA")
+        or "remoto" in location
+        or "remote" in location
+    ):
+        return "Tier 2 (Tech & Remoto Global)"
+    else:
+        return "Tier 1 (LATAM Local)"
+
+def extract_salary_usd(offer: dict) -> float | None:
+    """Extracts or estimates normalized monthly salary in USD from structured or raw text."""
+    min_usd = offer.get("min_salary_usd")
+    max_usd = offer.get("max_salary_usd")
+    if min_usd is not None and max_usd is not None:
+        return (float(min_usd) + float(max_usd)) / 2.0
+    if min_usd is not None:
+        return float(min_usd)
+    if max_usd is not None:
+        return float(max_usd)
+
+    raw = str(offer.get("salary") or "")
+    if not raw or "a convenir" in raw.lower() or "no especificado" in raw.lower():
+        return None
+
+    # Check for PEN (S/.)
+    pen_match = re.search(r'S/\.?\s*([0-9.,]+)', raw)
+    if pen_match:
+        try:
+            val = float(pen_match.group(1).replace(',', ''))
+            if val > 500:
+                return round(val / 3.75, 2)
+        except Exception:
+            pass
+
+    # Check for USD ($)
+    usd_match = re.search(r'\$\s*([0-9.,]+)', raw)
+    if usd_match:
+        try:
+            val = float(usd_match.group(1).replace(',', ''))
+            if val > 100:
+                if val > 15000:  # Yearly
+                    val = val / 12
+                return round(val, 2)
+        except Exception:
+            pass
+
+    # Check for EUR (€)
+    eur_match = re.search(r'€\s*([0-9.,]+)|([0-9.,]+)\s*€', raw)
+    if eur_match:
+        try:
+            val_str = (eur_match.group(1) or eur_match.group(2)).replace('.', '').replace(',', '.')
+            val = float(val_str)
+            if val > 15000:  # Yearly
+                val = val / 12
+            return round(val * 1.08, 2)
+        except Exception:
+            pass
+
+    return None
+
+def fetch_job_offers_from_supabase(client, target_portals=DEFAULT_TARGET_PORTALS):
     logger.info(f"Fetching job offers from Supabase (target_portals: {target_portals})...")
     offers = []
     limit = 1000
@@ -48,7 +123,7 @@ def fetch_job_offers_from_supabase(client, target_portals=("computrabajo", "geto
     while True:
         query = (
             client.table("job_offers")
-            .select("job_offer_id, job_title, raw_hard_skills, portal")
+            .select("job_offer_id, job_title, raw_hard_skills, portal, salary, min_salary_usd, max_salary_usd, country, location")
         )
         if target_portals:
             query = query.in_("portal", list(target_portals))
@@ -66,7 +141,7 @@ def fetch_job_offers_from_supabase(client, target_portals=("computrabajo", "geto
     logger.info(f"Loaded {len(offers)} job offers matching portals {target_portals}.")
     return offers
 
-def load_raw_data(use_cache=True, target_portals=("computrabajo", "getonboard")):
+def load_raw_data(use_cache=True, target_portals=DEFAULT_TARGET_PORTALS):
     """Loads raw skills and job offers, using local json cache if available."""
     skills_cache_path = os.path.join(config.DATA_DIR, "raw_skills.json")
     offers_cache_path = os.path.join(config.DATA_DIR, "raw_job_offers.json")
@@ -143,6 +218,39 @@ DEV_CONTEXT_SKILLS = {
     "javascript", "react", "angular", "vue", "ci/cd", "terraform"
 }
 
+SYNONYM_REDUNDANCY_MAP = {
+    "metodologías ágiles": "Agile Methodology",
+    "metodologias agiles": "Agile Methodology",
+    "metodología ágil": "Agile Methodology",
+    "metodologia agil": "Agile Methodology",
+    "agile": "Agile Methodology",
+    "agile methodology": "Agile Methodology",
+    "metodología agile": "Agile Methodology",
+    "metodologias agile": "Agile Methodology",
+    "desarrollo frontend": "Front-End Development",
+    "front-end": "Front-End Development",
+    "front end": "Front-End Development",
+    "frontend": "Front-End Development",
+    "desarrollo backend": "Back-End Web Development",
+    "back-end": "Back-End Web Development",
+    "back end": "Back-End Web Development",
+    "backend": "Back-End Web Development",
+    "full-stack": "Full Stack Development",
+    "fullstack": "Full Stack Development",
+    "full stack": "Full Stack Development",
+    "pruebas de software": "Quality Assurance",
+    "control de calidad": "Quality Assurance",
+    "aseguramiento de la calidad": "Quality Assurance",
+    "quality assurance": "Quality Assurance",
+    "qa": "Quality Assurance",
+    "testing de software": "Quality Assurance",
+    "pruebas automatizadas": "Automated Testing",
+    "testing automatizado": "Automated Testing",
+    "rest api": "Representational State Transfer (REST)",
+    "apis rest": "Representational State Transfer (REST)",
+    "api rest": "Representational State Transfer (REST)",
+}
+
 def process_job_offer_vectors(skills_data, offers_data):
     """Calculates canonical skills mapping and represents each job offer as a dense vector."""
     alias_to_canonical = {}
@@ -151,13 +259,14 @@ def process_job_offer_vectors(skills_data, offers_data):
     for s in skills_data:
         canonical = s["name"].strip()
         canonical_lower = canonical.lower()
-        alias_to_canonical[canonical_lower] = canonical
+        target = SYNONYM_REDUNDANCY_MAP.get(canonical_lower, canonical)
+        alias_to_canonical[canonical_lower] = target
         for a in s.get("skill_aliases", []):
             alias_name = a["alias_name"].lower().strip()
             # Do NOT allow generic "go" as an unconditional alias for the Go programming language
             if alias_name == "go":
                 continue
-            alias_to_canonical[alias_name] = canonical
+            alias_to_canonical[alias_name] = SYNONYM_REDUNDANCY_MAP.get(alias_name, target)
 
         emb_str = s.get("embedding")
         if emb_str:
@@ -194,7 +303,18 @@ def process_job_offer_vectors(skills_data, offers_data):
             doc_freq[canon] += 1
 
     N = len(offers_data)
-    idf = {s: math.log(1.0 + N / (df + 1.0)) for s, df in doc_freq.items()}
+    idf = {}
+    for s, df in doc_freq.items():
+        base = math.log(1.0 + N / (df + 1.0))
+        freq_ratio = df / N
+        # Apply extra penalty to transversal "comodín" skills (appear in >35% of offers).
+        # Without this, SQL/Python/Agile dominate every cluster centroid and cause
+        # semantically distinct roles (Java backend, Linux SysAdmin, Agile coach) to collapse
+        # into the same embedding region.
+        if freq_ratio > config.TRANSVERSAL_PENALTY_THRESHOLD:
+            base *= config.TRANSVERSAL_PENALTY_FACTOR
+        idf[s] = base
+
 
     valid_offers = []
     for row in offers_data:
@@ -223,6 +343,8 @@ def process_job_offer_vectors(skills_data, offers_data):
                 else:
                     # Drop the false positive 2-letter word "go" from normal English text
                     continue
+            elif clean_s in SYNONYM_REDUNDANCY_MAP:
+                canonical_name = SYNONYM_REDUNDANCY_MAP[clean_s]
             elif clean_s in alias_to_canonical:
                 canonical_name = alias_to_canonical[clean_s]
             else:
@@ -257,7 +379,9 @@ def process_job_offer_vectors(skills_data, offers_data):
                 "id": row["job_offer_id"],
                 "job_title": job_title,
                 "skills": valid_tech_skills,
-                "vector": offer_vector
+                "vector": offer_vector,
+                "market_tier": classify_market_tier(row),
+                "salary_usd": extract_salary_usd(row)
             })
 
     logger.info(f"Offers with valid tech skill embeddings: {len(valid_offers)} / {len(offers_data)}.")
