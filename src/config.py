@@ -20,20 +20,19 @@ UMAP_METRIC = os.environ.get("UMAP_METRIC", "cosine")
 UMAP_RANDOM_STATE = int(os.environ.get("UMAP_RANDOM_STATE", 42))
 
 # HDBSCAN Hyperparameters
-# With ~6,700 offers across all portals, min_cluster_size=70 means a cluster
-# must represent at least ~1% of the dataset — prevents micro-clusters of 1–2 skills.
-HDBSCAN_MIN_CLUSTER_SIZE = int(os.environ.get("HDBSCAN_MIN_CLUSTER_SIZE", 70))
-HDBSCAN_MIN_SAMPLES = int(os.environ.get("HDBSCAN_MIN_SAMPLES", 8))
+# Fine-grained clustering parameters calibrated to discover distinct LATAM tech market clusters.
+HDBSCAN_MIN_CLUSTER_SIZE = int(os.environ.get("HDBSCAN_MIN_CLUSTER_SIZE", 15))
+HDBSCAN_MIN_SAMPLES = int(os.environ.get("HDBSCAN_MIN_SAMPLES", 5))
 HDBSCAN_METRIC = os.environ.get("HDBSCAN_METRIC", "euclidean")
 
 # Post-clustering quality filters
 # Clusters failing these thresholds are discarded before deployment.
 MIN_SKILLS_PER_CLUSTER = int(os.environ.get("MIN_SKILLS_PER_CLUSTER", 3))
-MIN_OFFERS_PER_CLUSTER = int(os.environ.get("MIN_OFFERS_PER_CLUSTER", 30))
+MIN_OFFERS_PER_CLUSTER = int(os.environ.get("MIN_OFFERS_PER_CLUSTER", 15))
 
 # Cosine similarity above this threshold → clusters are considered duplicates (the smaller is dropped).
-# 0.88 is more aggressive than 0.92 — merges near-identical sub-clusters (e.g., Azure/DevOps variants).
-COSINE_DEDUP_THRESHOLD = float(os.environ.get("COSINE_DEDUP_THRESHOLD", 0.88))
+# 0.93 allows fine-grained specialties while merging true duplicates.
+COSINE_DEDUP_THRESHOLD = float(os.environ.get("COSINE_DEDUP_THRESHOLD", 0.93))
 
 # Transversal (comodín) skill penalty in IDF vectorization.
 # Skills appearing in more than THRESHOLD fraction of all offers get their IDF weight
