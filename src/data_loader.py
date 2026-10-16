@@ -381,7 +381,8 @@ def process_job_offer_vectors(skills_data, offers_data):
                 "skills": valid_tech_skills,
                 "vector": offer_vector,
                 "market_tier": classify_market_tier(row),
-                "salary_usd": extract_salary_usd(row)
+                "salary_usd": extract_salary_usd(row),
+                "portal": row.get("portal")
             })
 
     logger.info(f"Offers with valid tech skill embeddings: {len(valid_offers)} / {len(offers_data)}.")

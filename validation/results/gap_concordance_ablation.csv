@@ -1,0 +1,5 @@
+architecture,mean_jaccard_at_5,mean_hit_rate_at_5,mean_binary_hit_rate_at_5
+Modelo completo (p=0.30),0.2616,0.3467,0.7333
+Sin crédito parcial (p=0),0.2561,0.3333,0.7333
+Jaccard simple no ponderado,0.2676,0.36,0.7333
+Similitud coseno directa,0.2698,0.36,0.8

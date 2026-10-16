@@ -106,8 +106,7 @@ def weighted_jaccard_full(
                         alt_score = (best_alt.ict_score / 10.0) if use_ict else 1.0
                         partial = partial_credit * alt_score
 
-                if partial == 0.0:
-                    gaps.append((cs.name, _classify_gap(w, f_s)))
+                gaps.append((cs.name, _classify_gap(w, f_s), w * f_s))
 
                 numerator += (w * f_s) * partial
                 denominator += w * f_s
@@ -117,12 +116,16 @@ def weighted_jaccard_full(
                 user_score = (us.ict_score / 10.0) if use_ict else 1.0
                 denominator += w * user_score
 
+        # Prioritize gaps by market importance (weight * frequency) desc
+        gaps.sort(key=lambda g: g[2], reverse=True)
+        final_gaps = [(g[0], g[1]) for g in gaps]
+
         score = (numerator / denominator) if denominator > 0.0 else 0.0
         results.append(AffinityResult(
             cluster_name=cluster.name,
             affinity_score=score,
             detected_skills=matched,
-            skill_gaps=gaps,
+            skill_gaps=final_gaps,
         ))
 
     results.sort(key=lambda r: r.affinity_score, reverse=True)
