@@ -1,0 +1,199 @@
+[
+  {
+    "id": "cv-001",
+    "role": "Senior Frontend Developer",
+    "seniority": "senior",
+    "target_cluster": "Desarrollador Web Frontend (HTML, CSS & JavaScript)",
+    "cv_text": "Alex Rivera - Senior Frontend Engineer\nSummary: 7+ years developing high-performance web applications using modern JavaScript and TypeScript frameworks.\nExperience:\nStaff Frontend Engineer at TechCorp (2021-Present):\n- Architected web client in Next.js and TypeScript, reducing initial page load by 40%.\n- Implemented atomic design component library with Tailwind CSS and Storybook.\n- Handled state management with Redux Toolkit and React Query.\n- Configured CI/CD test automation pipelines with Vitest, Jest and Playwright.\nFrontend Developer at CloudScale (2018-2021):\n- Built interactive dashboards using React, GraphQL, and Styled Components.\n- Integrated RESTful APIs with Axios and WebSockets for real-time telemetry.\nSkills & Tools: JavaScript, TypeScript, React, Next.js, HTML5, CSS3, Tailwind CSS, Redux, GraphQL, WebSockets, Vitest, Jest, Playwright, Storybook, Git, Docker, Webpack, Vite.",
+    "ground_truth_skills": [
+      "JavaScript", "TypeScript", "React", "Next.js", "HTML5", "CSS3",
+      "Tailwind CSS", "Redux", "GraphQL", "WebSockets", "Vitest", "Jest",
+      "Playwright", "Storybook", "Git", "Docker", "Webpack", "Vite", "RESTful API", "Axios"
+    ],
+    "ground_truth_gaps": [
+      "Angular (Web Framework)", "Software Configuration Management", "SQL (Programming Language)", "Java (Programming Language)", "PHP (Scripting Language)"
+    ]
+  },
+  {
+    "id": "cv-002",
+    "role": "Junior Frontend Developer",
+    "seniority": "junior",
+    "target_cluster": "Desarrollador Web Frontend",
+    "cv_text": "Lucia Morales - Junior Web Developer\nSummary: Enthusiastic frontend developer with 1 year of personal and boot camp projects creating responsive user interfaces.\nExperience:\nFrontend Trainee at StartHub (2023-2024):\n- Created responsive landing pages using semantic HTML, CSS3, and modern JavaScript (ES6+).\n- Built single-page applications with Vue.js and Pinia for store state.\n- Used Bootstrap and Sass for styling.\n- Version control with Git and GitHub.\nEducation: Web Development Bootcamp (600 hours).\nSkills: HTML, CSS, JavaScript, Vue.js, Bootstrap, Sass, Git, GitHub, REST API.",
+    "ground_truth_skills": [
+      "HTML", "CSS", "JavaScript", "Vue.js", "Bootstrap", "Sass", "Git", "GitHub", "REST API"
+    ],
+    "ground_truth_gaps": [
+      "DevOps", "Software Configuration Management", "TypeScript", "React.js", "SQL (Programming Language)"
+    ]
+  },
+  {
+    "id": "cv-003",
+    "role": "Mid Frontend Angular Developer",
+    "seniority": "mid",
+    "target_cluster": "Desarrollador Web Frontend (HTML, CSS & JavaScript)",
+    "cv_text": "Carlos Mendoza - Frontend Developer (Angular)\nSummary: 4 years designing enterprise frontend solutions with Angular and TypeScript.\nExperience:\nSoftware Engineer at BankSys (2021-Present):\n- Built core banking modules using Angular 16, TypeScript, and RxJS for reactive event streaming.\n- Implemented state architecture with NgRx and reactive forms with custom validators.\n- Created stylesheets with SCSS and Angular Material.\n- Unit testing with Karma and Jasmine. End-to-end testing with Cypress.\nSkills: Angular, TypeScript, RxJS, NgRx, SCSS, HTML5, CSS3, Angular Material, Cypress, Karma, Jasmine, Git, REST API.",
+    "ground_truth_skills": [
+      "Angular", "TypeScript", "RxJS", "NgRx", "SCSS", "HTML5", "CSS3", "Angular Material", "Cypress", "Karma", "Jasmine", "Git", "REST API"
+    ],
+    "ground_truth_gaps": [
+      "Software Configuration Management", "SQL (Programming Language)", "Java (Programming Language)", "Python (Programming Language)", "PHP (Scripting Language)"
+    ]
+  },
+  {
+    "id": "cv-004",
+    "role": "Senior Backend Python Engineer",
+    "seniority": "senior",
+    "target_cluster": "Ingeniero Machine Learning & Ciencia de Datos",
+    "cv_text": "Diego Fernandez - Senior Python & Backend Engineer\nSummary: 6 years building distributed backend APIs, asynchronous services, and data pipelines in Python.\nExperience:\nSenior Backend Engineer at DataFlow (2020-Present):\n- Designed microservices with Python, FastAPI, and Pydantic, achieving sub-20ms latency.\n- Managed asynchronous task workers using Celery and Redis.\n- Relational persistence with PostgreSQL and SQLAlchemy, including query optimization and Alembic migrations.\n- Containerized workloads using Docker and Docker Compose, deployed to AWS ECS.\n- Machine learning model serving with PyTorch and Scikit-Learn.\nSkills: Python, FastAPI, Pydantic, Celery, Redis, PostgreSQL, SQLAlchemy, Alembic, Docker, AWS ECS, Git, PyTest, PyTorch, Scikit-Learn, REST API.",
+    "ground_truth_skills": [
+      "Python", "FastAPI", "Pydantic", "Celery", "Redis", "PostgreSQL", "SQLAlchemy", "Alembic", "Docker", "AWS ECS", "Git", "PyTest", "PyTorch", "Scikit-Learn", "REST API"
+    ],
+    "ground_truth_gaps": [
+      "Machine Learning", "SQL (Programming Language)", "Apache Spark", "Docker (Software)", "CI/CD"
+    ]
+  },
+  {
+    "id": "cv-005",
+    "role": "Junior Python Backend Developer",
+    "seniority": "junior",
+    "target_cluster": "Desarrollador Backend Ruby on Rails",
+    "cv_text": "Martin Gomez - Junior Python Developer\nSummary: Software engineering graduate with 1 year experience developing web applications with Python and Django.\nExperience:\nJunior Developer at InnoTech (2023-2024):\n- Implemented CRUD REST endpoints using Django and Django REST Framework.\n- Integrated relational databases with SQLite and PostgreSQL.\n- Wrote unit tests using unittest and PyTest.\n- Basic deployment to Heroku and Linux virtual machines.\nSkills: Python, Django, Django REST Framework, PostgreSQL, SQLite, Git, PyTest, Linux, Heroku, REST API.",
+    "ground_truth_skills": [
+      "Python", "Django", "Django REST Framework", "PostgreSQL", "SQLite", "Git", "PyTest", "Linux", "Heroku", "REST API"
+    ],
+    "ground_truth_gaps": [
+      "Ruby On Rails", "Ruby (Programming Language)", "React.js", "CI/CD", "TypeScript"
+    ]
+  },
+  {
+    "id": "cv-006",
+    "role": "Senior Java Backend Architect",
+    "seniority": "senior",
+    "target_cluster": "Arquitecto de Microservicios & Sistemas Distribuidos",
+    "cv_text": "Fernando Castro - Lead Java Software Architect\nSummary: 8+ years designing scalable, fault-tolerant microservices architectures using Java and Spring ecosystem.\nExperience:\nPrincipal Architect at FinTech Global (2019-Present):\n- Led distributed transactions across 20+ microservices using Spring Boot, Spring Cloud, and Apache Kafka.\n- Optimized data persistence layer with PostgreSQL, Oracle, and Hibernate/JPA.\n- Deployed services onto Kubernetes (EKS) with Helm charts and Istio service mesh.\n- Implemented security using OAuth2 and Spring Security.\nSkills: Java, Spring Boot, Spring Cloud, Apache Kafka, Hibernate, JPA, PostgreSQL, Oracle, Kubernetes, Helm, Docker, OAuth2, Spring Security, Git, Maven, JUnit, Mockito.",
+    "ground_truth_skills": [
+      "Java", "Spring Boot", "Spring Cloud", "Apache Kafka", "Hibernate", "JPA", "PostgreSQL", "Oracle", "Kubernetes", "Helm", "Docker", "OAuth2", "Spring Security", "Git", "Maven", "JUnit", "Mockito"
+    ],
+    "ground_truth_gaps": [
+      "Microservicios", "Amazon Web Services", "DevOps", "CI/CD", "Microsoft Azure"
+    ]
+  },
+  {
+    "id": "cv-007",
+    "role": "Mid Java Backend Developer",
+    "seniority": "mid",
+    "target_cluster": "Desarrollador Backend .NET & C#",
+    "cv_text": "Patricia Ramos - Java Backend Developer\nSummary: 3.5 years developing enterprise applications and REST APIs using Java and Spring Boot.\nExperience:\nBackend Engineer at Telecom Labs (2021-Present):\n- Built RESTful web services using Java 17 and Spring Boot.\n- Maintained relational database schemas and queries using MySQL and Spring Data JPA.\n- Configured automated tests with JUnit 5 and Mockito.\n- Build automation using Maven and version control with Git.\nSkills: Java, Spring Boot, Spring Data JPA, MySQL, REST API, Maven, JUnit, Mockito, Git, Postman, Linux.",
+    "ground_truth_skills": [
+      "Java", "Spring Boot", "Spring Data JPA", "MySQL", "REST API", "Maven", "JUnit", "Mockito", "Git", "Postman", "Linux"
+    ],
+    "ground_truth_gaps": [
+      ".NET Development", "SQL (Programming Language)", "Agile Methodology", "PostgreSQL", "C#"
+    ]
+  },
+  {
+    "id": "cv-008",
+    "role": "Senior DevOps & Cloud Engineer",
+    "seniority": "senior",
+    "target_cluster": "Ingeniero DevOps & Infraestructura como Código",
+    "cv_text": "Eduardo Silva - Senior DevOps & Cloud Infrastructure Engineer\nSummary: 7 years specializing in Cloud Infrastructure, GitOps, and automation.\nExperience:\nLead DevOps Engineer at CloudOps (2020-Present):\n- Automated infrastructure provisioning on AWS using Terraform and Terragrunt.\n- Managed multi-cluster Kubernetes environments with ArgoCD and Helm.\n- Built robust CI/CD pipelines in GitLab CI and GitHub Actions.\n- Monitored platform metrics using Prometheus, Grafana, and Datadog.\n- Configured container security and Linux system administration.\nSkills: AWS, Terraform, Kubernetes, ArgoCD, Helm, Docker, GitLab CI, GitHub Actions, Linux, Bash, Python, Prometheus, Grafana, Datadog, Ansible, Git.",
+    "ground_truth_skills": [
+      "AWS", "Terraform", "Kubernetes", "ArgoCD", "Helm", "Docker", "GitLab CI", "GitHub Actions", "Linux", "Bash", "Python", "Prometheus", "Grafana", "Datadog", "Ansible", "Git"
+    ],
+    "ground_truth_gaps": [
+      "Microsoft Azure", "Google Cloud Platform (GCP)", "SQL (Programming Language)", "Software Configuration Management", "DevOps"
+    ]
+  },
+  {
+    "id": "cv-009",
+    "role": "Mid DevOps Engineer",
+    "seniority": "mid",
+    "target_cluster": "Ingeniero CI/CD & Pipelines (Jenkins)",
+    "cv_text": "Gabriel Torres - DevOps Engineer\nSummary: 3 years automating software delivery pipelines and cloud resources.\nExperience:\nDevOps Engineer at MediaNet (2022-Present):\n- Designed CI/CD automation pipelines using Jenkins and GitHub Actions.\n- Managed containerized applications using Docker and Docker Compose.\n- Provisioned Microsoft Azure virtual networks and App Services using Terraform.\n- Scripted deployment tasks in Bash and Python.\nSkills: Azure, Terraform, Docker, Docker Compose, Jenkins, GitHub Actions, Bash, Python, Linux, Git.",
+    "ground_truth_skills": [
+      "Azure", "Terraform", "Docker", "Docker Compose", "Jenkins", "GitHub Actions", "Bash", "Python", "Linux", "Git"
+    ],
+    "ground_truth_gaps": [
+      "Kubernetes", "Amazon Web Services", "SQL (Programming Language)", "DevOps", "Jira"
+    ]
+  },
+  {
+    "id": "cv-010",
+    "role": "Senior Data Engineer",
+    "seniority": "senior",
+    "target_cluster": "Administrador de Bases de Datos (DBA)",
+    "cv_text": "Sofia Vargas - Senior Data Engineer\nSummary: 6 years building big data batch and streaming processing pipelines.\nExperience:\nSenior Data Engineer at RetailAnalytics (2020-Present):\n- Built scalable ETL pipelines using Python, PySpark, and Apache Spark on AWS EMR.\n- Orchestrated daily workflow dependencies using Apache Airflow.\n- Designed data warehouse models in Snowflake and wrote transformation queries with SQL and dbt.\n- Ingested streaming events from Apache Kafka into Amazon S3 data lake.\nSkills: Python, Apache Spark, PySpark, Apache Airflow, Snowflake, SQL, dbt, Apache Kafka, AWS S3, AWS EMR, Docker, Git, Linux.",
+    "ground_truth_skills": [
+      "Python", "Apache Spark", "PySpark", "Apache Airflow", "Snowflake", "SQL", "dbt", "Apache Kafka", "AWS S3", "AWS EMR", "Docker", "Git", "Linux"
+    ],
+    "ground_truth_gaps": [
+      "MySql", "PostgreSQL", "PHP (Scripting Language)", "Power BI", "Amazon Web Services"
+    ]
+  },
+  {
+    "id": "cv-011",
+    "role": "Mid Data Analyst / BI",
+    "seniority": "mid",
+    "target_cluster": "Analista de Datos & Business Intelligence",
+    "cv_text": "Valeria Rios - Business Intelligence & Data Analyst\nSummary: 3 years turning business data into actionable dashboards and statistical reports.\nExperience:\nBI Analyst at LogiCorp (2022-Present):\n- Designed executive dashboards and KPIs in Microsoft Power BI and Tableau.\n- Authored complex SQL queries, window functions, and views in PostgreSQL and BigQuery.\n- Cleaned and analyzed business datasets using Python, Pandas, and NumPy.\n- Conducted advanced spreadsheet modeling in Excel.\nSkills: Power BI, Tableau, SQL, PostgreSQL, Google BigQuery, Python, Pandas, NumPy, Microsoft Excel, Git.",
+    "ground_truth_skills": [
+      "Power BI", "Tableau", "SQL", "PostgreSQL", "Google BigQuery", "Python", "Pandas", "NumPy", "Microsoft Excel", "Git"
+    ],
+    "ground_truth_gaps": [
+      "Microsoft Azure", "Amazon Web Services", "Software Configuration Management", "Agile Methodology", "Linux"
+    ]
+  },
+  {
+    "id": "cv-012",
+    "role": "Senior Full Stack Developer",
+    "seniority": "senior",
+    "target_cluster": "Desarrollador Full Stack TypeScript",
+    "cv_text": "Javier Herrera - Senior Full Stack Engineer\nSummary: 6 years developing web applications end-to-end with React, Node.js, and TypeScript.\nExperience:\nLead Full Stack Engineer at SaaSify (2021-Present):\n- Developed frontend client in React 18, TypeScript, and Tailwind CSS.\n- Built backend REST and GraphQL microservices using Node.js, Express, and Prisma ORM.\n- Persisted transactional data in PostgreSQL and cached session tokens in Redis.\n- Containerized application with Docker and automated testing with Jest and Supertest.\n- Deployed to AWS EC2 and S3 using GitHub Actions.\nSkills: TypeScript, JavaScript, React, Node.js, Express, Tailwind CSS, GraphQL, PostgreSQL, Prisma, Redis, Docker, Jest, Supertest, AWS EC2, AWS S3, GitHub Actions, Git.",
+    "ground_truth_skills": [
+      "TypeScript", "JavaScript", "React", "Node.js", "Express", "Tailwind CSS", "GraphQL", "PostgreSQL", "Prisma", "Redis", "Docker", "Jest", "Supertest", "AWS EC2", "AWS S3", "GitHub Actions", "Git"
+    ],
+    "ground_truth_gaps": [
+      "Python (Programming Language)", "SQL (Programming Language)", "Amazon Web Services", "Docker (Software)", "CI/CD"
+    ]
+  },
+  {
+    "id": "cv-013",
+    "role": "Junior Full Stack Developer",
+    "seniority": "junior",
+    "target_cluster": "Desarrollador Backend Node.js",
+    "cv_text": "Andres Paredes - Junior Full Stack Developer (MERN)\nSummary: 1.5 years experience building modern web applications using MongoDB, Express, React, and Node.js.\nExperience:\nJunior Web Developer at AppDev (2023-2024):\n- Implemented frontend components with React, HTML5, and CSS3.\n- Created backend endpoints using Node.js and Express.\n- Managed NoSQL database documents with MongoDB and Mongoose.\n- Version control and code collaboration using Git and GitHub.\nSkills: React, Node.js, Express, MongoDB, Mongoose, JavaScript, HTML5, CSS3, Git, GitHub, REST API, Postman.",
+    "ground_truth_skills": [
+      "React", "Node.js", "Express", "MongoDB", "Mongoose", "JavaScript", "HTML5", "CSS3", "Git", "GitHub", "REST API", "Postman"
+    ],
+    "ground_truth_gaps": [
+      "Agile Methodology", "Jira", "Angular (Web Framework)", "TypeScript", "PostgreSQL"
+    ]
+  },
+  {
+    "id": "cv-014",
+    "role": "Mobile iOS Developer",
+    "seniority": "mid",
+    "target_cluster": "Ingeniero Mobile iOS & Android",
+    "cv_text": "Mateo Salazar - iOS Mobile Developer\nSummary: 4 years engineering native mobile apps for iOS with Swift and SwiftUI.\nExperience:\nMobile Engineer at AppWorks (2021-Present):\n- Developed customer-facing iOS applications using Swift and SwiftUI with MVVM architecture.\n- Managed asynchronous data streams using Combine framework.\n- Consumed RESTful APIs using URLSession and Alamofire.\n- Implemented local persistence using CoreData.\n- Automated builds and distribution with Xcode and Fastlane.\nSkills: Swift, SwiftUI, Combine, Alamofire, CoreData, Xcode, Fastlane, Git, CocoaPods, REST API, iOS.",
+    "ground_truth_skills": [
+      "Swift", "SwiftUI", "Combine", "Alamofire", "CoreData", "Xcode", "Fastlane", "Git", "CocoaPods", "REST API", "iOS"
+    ],
+    "ground_truth_gaps": [
+      "Android (Operating System)", "CI/CD", "Jira", "Figma (Design Software)", "Agile Methodology"
+    ]
+  },
+  {
+    "id": "cv-015",
+    "role": "QA Automation Engineer",
+    "seniority": "mid",
+    "target_cluster": "Ingeniero QA Automation (Selenium)",
+    "cv_text": "Camila Ortiz - QA Automation Engineer\nSummary: 4 years in software quality assurance, building automated test frameworks for web and APIs.\nExperience:\nQA Automation Engineer at QualityFirst (2021-Present):\n- Designed and implemented end-to-end automation frameworks using Selenium WebDriver and Python.\n- Created API regression test suites using Postman and PyTest.\n- Automated frontend component and integration testing with Cypress.\n- Integrated automated test suites into Jenkins CI/CD pipeline.\n- Tracked defects and test runs in JIRA.\nSkills: Selenium, Cypress, Python, PyTest, Postman, Jenkins, JIRA, SQL, Git, Linux, REST API, Agile Methodology.",
+    "ground_truth_skills": [
+      "Selenium", "Cypress", "Python", "PyTest", "Postman", "Jenkins", "JIRA", "SQL", "Git", "Linux", "REST API", "Agile Methodology"
+    ],
+    "ground_truth_gaps": [
+      "CI/CD", "DevOps", "Microsoft Azure", "Amazon Web Services", "TypeScript"
+    ]
+  }
+]

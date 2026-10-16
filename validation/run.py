@@ -144,6 +144,46 @@ def _infer_domain(skill_name: str) -> str:
     return "general"
 
 
+def _has_calibrated_clusters() -> bool:
+    from src import config as ml_config
+    dump_path = os.path.join(ml_config.DATA_DIR, "clusters_calibrated_dump.json")
+    return os.path.exists(dump_path)
+
+
+def _load_calibrated_clusters() -> list:
+    import json
+    from src import config as ml_config
+    from validation.alignment import Cluster, Skill
+
+    dump_path = os.path.join(ml_config.DATA_DIR, "clusters_calibrated_dump.json")
+    with open(dump_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    clusters = []
+    for item in data:
+        centroid_skills = []
+        for sk_name, freq in item.get("skills", {}).items():
+            weight = 3.0 if freq >= 0.6 else (2.0 if freq >= 0.3 else 1.0)
+            centroid_skills.append(
+                Skill(
+                    name=sk_name,
+                    domain_tags=[_infer_domain(sk_name)],
+                    core_domains=[_infer_domain(sk_name)],
+                    weight=float(weight),
+                    frequency=float(freq),
+                    ict_score=7.0,
+                )
+            )
+        clusters.append(
+            Cluster(
+                name=item.get("name", f"Cluster {item.get('id')}"),
+                centroid_skills=centroid_skills,
+                job_offer_count=item.get("offers", 0),
+            )
+        )
+    return clusters
+
+
 def _load_demo_clusters() -> list:
     """Crea clústeres de demostración si no hay datos reales."""
     from validation.alignment import Cluster, Skill
@@ -231,7 +271,13 @@ def main():
     args = parser.parse_args()
 
     # Cargar clústeres
-    if args.demo or not _has_supabase_creds():
+    if args.demo:
+        logger.info("Using demo clusters")
+        clusters = _load_demo_clusters()
+    elif _has_calibrated_clusters():
+        logger.info("Loading calibrated clusters from local dump")
+        clusters = _load_calibrated_clusters()
+    elif not _has_supabase_creds():
         logger.info("Using demo clusters")
         clusters = _load_demo_clusters()
     else:
