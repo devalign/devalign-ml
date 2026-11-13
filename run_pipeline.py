@@ -30,40 +30,17 @@ def parse_args():
     return parser.parse_args()
 
 def deploy_to_supabase(client, valid_offers, final_labels, cluster_results, all_skills):
-    """Deploys clustering results to Supabase (resets, deletes old, inserts new)."""
-    logger.info("Starting deployment to Supabase...")
-    
-    # 1. Reset job_offers cluster_id to NULL
-    logger.info("Unlinking existing job offers from clusters...")
-    try:
-        client.table("job_offers").update({"cluster_id": None}).not_.is_("cluster_id", "null").execute()
-    except Exception as e:
-        logger.warning(f"Unlinking job offers note: {e}")
+    """Deploys clustering results safely to Supabase (in-place cosine sync, zero user data loss)."""
+    logger.info("Starting safe deployment to Supabase...")
 
-    # 2. Delete child tables in reverse dependency order to prevent FK RESTRICT violations
-    logger.info("Purging old diagnostics, roadmaps, cluster_skills, and clusters...")
-    for table_name, pk in [
-        ("diagnostic_skills", "diagnostic_skill_id"),
-        ("roadmaps", "roadmap_id"),
-        ("diagnostics", "diagnostic_id"),
-        ("cluster_skills", "cluster_skill_id"),
-        ("clusters", "cluster_id"),
-    ]:
-        try:
-            logger.info(f"Purging table '{table_name}'...")
-            client.table(table_name).delete().neq(pk, "00000000-0000-0000-0000-000000000000").execute()
-        except Exception as e:
-            logger.warning(f"Bulk delete on '{table_name}' note: {e}, attempting iterative fallback...")
-            try:
-                rows = client.table(table_name).select(pk).execute()
-                for r in (rows.data or []):
-                    client.table(table_name).delete().eq(pk, r[pk]).execute()
-            except Exception as e2:
-                logger.error(f"Iterative delete on '{table_name}' failed: {e2}")
+    # 1. Fetch existing clusters to match by centroid cosine similarity
+    existing_clusters_resp = client.table("clusters").select("cluster_id, name, centroid_vec").execute()
+    existing_clusters = existing_clusters_resp.data or []
+    logger.info(f"Loaded {len(existing_clusters)} existing clusters from Supabase.")
 
-    # Get existing canonical skills mapping
+    # 2. Get existing canonical skills mapping
     existing_skills_resp = client.table("skills").select("skill_id, name").execute()
-    existing_skills_map = {s["name"]: s["skill_id"] for s in existing_skills_resp.data}
+    existing_skills_map = {s["name"]: s["skill_id"] for s in (existing_skills_resp.data or [])}
 
     # Ensure all canonical skills exist in the skills table
     new_skills_to_insert = []
@@ -74,59 +51,106 @@ def deploy_to_supabase(client, valid_offers, final_labels, cluster_results, all_
     if new_skills_to_insert:
         logger.info(f"Inserting {len(new_skills_to_insert)} missing canonical skills...")
         inserted_skills = client.table("skills").upsert(new_skills_to_insert, on_conflict="name").execute()
-        for s in inserted_skills.data:
+        for s in (inserted_skills.data or []):
             existing_skills_map[s["name"]] = s["skill_id"]
 
-    # 3. Insert new clusters and link job offers
-    logger.info("Inserting new clusters and linking job offers...")
+    # 3. Synchronize clusters in-place based on centroid cosine similarity (threshold >= 0.88)
+    used_existing_cluster_ids = set()
+    cluster_id_mapping = {}
+
     for cr in cluster_results:
-        cluster_id = str(uuid4())
-        client.table("clusters").insert(
-            {
-                "cluster_id": cluster_id,
-                "name": cr["name"],
-                "description": cr["description"],
-                "job_offer_count": cr["job_offer_count"],
-                "compatible_roles": cr["compatible_roles"],
-                "centroid_vec": cr["centroid_vec"],
-                "market_insights": {
-                    "growth_percentage": cr["growth_percentage"],
-                    "market_share_percentage": cr["market_share_percentage"],
-                    "market_tier": cr.get("market_tier", "Tier 2 (Tech & Remoto Global)"),
-                    "average_salary_usd": cr.get("average_salary_usd", 2500.0),
-                    "salary_p25_usd": cr.get("salary_p25_usd", 1800.0),
-                    "salary_median_usd": cr.get("salary_median_usd", 2500.0),
-                    "salary_p75_usd": cr.get("salary_p75_usd", 3500.0),
-                    "salary_differential_percentage": cr.get("salary_differential_percentage", 0.0),
-                }
+        c_vec = np.array(cr["centroid_vec"], dtype=np.float32)
+        c_norm = c_vec / (np.linalg.norm(c_vec) + 1e-9)
+
+        matched_id = None
+        best_sim = -1.0
+
+        for ec in existing_clusters:
+            ec_id = ec["cluster_id"]
+            if ec_id in used_existing_cluster_ids:
+                continue
+            ec_vec = ec.get("centroid_vec")
+            if ec_vec and isinstance(ec_vec, list) and len(ec_vec) == 1024:
+                k_vec = np.array(ec_vec, dtype=np.float32)
+                k_norm = k_vec / (np.linalg.norm(k_vec) + 1e-9)
+                sim = float(np.dot(c_norm, k_norm))
+                if sim > best_sim:
+                    best_sim = sim
+                    if sim >= 0.88:
+                        matched_id = ec_id
+
+        cluster_payload = {
+            "name": cr["name"],
+            "description": cr["description"],
+            "job_offer_count": cr["job_offer_count"],
+            "compatible_roles": cr["compatible_roles"],
+            "centroid_vec": cr["centroid_vec"],
+            "market_insights": {
+                "growth_percentage": cr.get("growth_percentage"),
+                "market_share_percentage": cr["market_share_percentage"],
+                "market_tier": cr.get("market_tier", "Tier 2 (Tech & Remoto Global)"),
+                "average_salary_usd": cr.get("average_salary_usd"),
+                "salary_p25_usd": cr.get("salary_p25_usd"),
+                "salary_median_usd": cr.get("salary_median_usd"),
+                "salary_p75_usd": cr.get("salary_p75_usd"),
+                "salary_differential_percentage": cr.get("salary_differential_percentage"),
+                "has_salary_benchmark": cr.get("has_salary_benchmark", False),
             }
-        ).execute()
+        }
 
-        # Link job offers to this cluster in chunks of 100
-        offer_ids = cr["offer_ids"]
-        for i in range(0, len(offer_ids), 100):
-            chunk = offer_ids[i : i + 100]
-            client.table("job_offers").update({"cluster_id": cluster_id}).in_(
-                "job_offer_id", chunk
-            ).execute()
+        if matched_id:
+            used_existing_cluster_ids.add(matched_id)
+            target_cluster_id = matched_id
+            logger.info(f"Cluster '{cr['name']}' matched existing ID {target_cluster_id} (cosine={best_sim:.3f}). Updating in-place...")
+            client.table("clusters").update(cluster_payload).eq("cluster_id", target_cluster_id).execute()
+        else:
+            target_cluster_id = str(uuid4())
+            logger.info(f"Cluster '{cr['name']}' is new. Inserting with new ID {target_cluster_id}...")
+            insert_data = dict(cluster_payload)
+            insert_data["cluster_id"] = target_cluster_id
+            client.table("clusters").insert(insert_data).execute()
 
-        # Insert Cluster Skills relations
+        cluster_id_mapping[cr["cluster_index"]] = target_cluster_id
+
+        # Update cluster_skills relations for this cluster
+        try:
+            client.table("cluster_skills").delete().eq("cluster_id", target_cluster_id).execute()
+        except Exception as e:
+            logger.warning(f"Error purging old skills for cluster {target_cluster_id}: {e}")
+
         cs_inserts = []
         for cs in cr["skills"]:
             s_id = existing_skills_map.get(cs["name"])
             if s_id:
-                cs_inserts.append(
-                    {
-                        "cluster_id": cluster_id,
-                        "skill_id": s_id,
-                        "importance_score": cs["frequency"] * cs["weight"],
-                    }
-                )
+                cs_inserts.append({
+                    "cluster_id": target_cluster_id,
+                    "skill_id": s_id,
+                    "importance_score": cs["frequency"] * cs["weight"],
+                })
 
         if cs_inserts:
             client.table("cluster_skills").insert(cs_inserts).execute()
 
-    logger.info("Deployment finished successfully!")
+    # 4. Unlink and re-link job offers
+    logger.info("Unlinking outdated job offer cluster links...")
+    try:
+        client.table("job_offers").update({"cluster_id": None}).not_.is_("cluster_id", "null").execute()
+    except Exception as e:
+        logger.warning(f"Unlinking job offers note: {e}")
+
+    logger.info("Linking job offers to updated clusters...")
+    for cr in cluster_results:
+        target_cluster_id = cluster_id_mapping.get(cr["cluster_index"])
+        if not target_cluster_id:
+            continue
+        offer_ids = cr["offer_ids"]
+        for i in range(0, len(offer_ids), 100):
+            chunk = offer_ids[i : i + 100]
+            client.table("job_offers").update({"cluster_id": target_cluster_id}).in_(
+                "job_offer_id", chunk
+            ).execute()
+
+    logger.info("Deployment finished successfully with zero user data loss!")
 
 def main():
     args = parse_args()
@@ -235,21 +259,20 @@ def main():
         dominant_tier = max(tier_counts.items(), key=lambda x: x[1])[0] if tier_counts else "Tier 2 (Tech & Remoto Global)"
 
         salaries = [o["salary_usd"] for o in cluster_offers_subset if o.get("salary_usd") is not None]
-        if len(salaries) >= 3:
+        has_salary_benchmark = len(salaries) >= 3
+        if has_salary_benchmark:
             p25_usd = float(np.percentile(salaries, 25))
             p50_usd = float(np.percentile(salaries, 50))
             p75_usd = float(np.percentile(salaries, 75))
             avg_usd = float(np.mean(salaries))
+            tier_ref_median = 5500.0 if "Tier 3" in dominant_tier else (1200.0 if "Tier 1" in dominant_tier else 2800.0)
+            salary_diff_pct = round(((p50_usd / tier_ref_median) - 1.0) * 100, 1)
         else:
-            if "Tier 3" in dominant_tier:
-                avg_usd, p25_usd, p50_usd, p75_usd = 5500.0, 4200.0, 5500.0, 7200.0
-            elif "Tier 1" in dominant_tier:
-                avg_usd, p25_usd, p50_usd, p75_usd = 1200.0, 800.0, 1200.0, 1600.0
-            else:
-                avg_usd, p25_usd, p50_usd, p75_usd = 2800.0, 2000.0, 2800.0, 3800.0
-
-        tier_ref_median = 5500.0 if "Tier 3" in dominant_tier else (1200.0 if "Tier 1" in dominant_tier else 2800.0)
-        salary_diff_pct = round(((p50_usd / tier_ref_median) - 1.0) * 100, 1)
+            p25_usd = None
+            p50_usd = None
+            p75_usd = None
+            avg_usd = None
+            salary_diff_pct = None
 
         cluster_results_raw.append({
             "cluster_index": k,
@@ -263,13 +286,14 @@ def main():
             "centroid_vec": results["centroids_1024d"][k],
             "offer_ids": cluster_df["offer_id"].tolist(),
             "market_share_percentage": round((cluster_size / len(valid_offers)) * 100, 1),
-            "growth_percentage": round(np.random.uniform(5.0, 25.0), 1),
+            "growth_percentage": None,
             "market_tier": dominant_tier,
-            "average_salary_usd": round(avg_usd, 2),
-            "salary_p25_usd": round(p25_usd, 2),
-            "salary_median_usd": round(p50_usd, 2),
-            "salary_p75_usd": round(p75_usd, 2),
+            "average_salary_usd": round(avg_usd, 2) if avg_usd is not None else None,
+            "salary_p25_usd": round(p25_usd, 2) if p25_usd is not None else None,
+            "salary_median_usd": round(p50_usd, 2) if p50_usd is not None else None,
+            "salary_p75_usd": round(p75_usd, 2) if p75_usd is not None else None,
             "salary_differential_percentage": salary_diff_pct,
+            "has_salary_benchmark": has_salary_benchmark,
         })
 
     # 5b. Post-clustering quality filters
