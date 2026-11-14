@@ -204,20 +204,6 @@ GENERIC_OFFICE_SKILLS = {
     "powerpoint"
 }
 
-DEV_ROLE_KEYWORDS = {
-    "developer", "desarrollador", "engineer", "ingeniero", "architect", "arquitecto",
-    "programmer", "programador", "backend", "frontend", "fullstack", "full-stack",
-    "software", "devops", "cloud", "data", "qa", "tester", "sre", "machine learning",
-    "ia", "ai", "mobile", "ios", "android", "sysadmin", "tech lead", "cto"
-}
-
-DEV_CONTEXT_SKILLS = {
-    "backend", "frontend", "full-stack", "docker", "kubernetes", "microservices",
-    "rest", "grpc", "sql", "postgresql", "mysql", "mongodb", "redis", "aws", "gcp",
-    "azure", "git", "linux", "c++", "c#", "java", "python", "rust", "typescript",
-    "javascript", "react", "angular", "vue", "ci/cd", "terraform"
-}
-
 SYNONYM_REDUNDANCY_MAP = {
     "metodologías ágiles": "Agile Methodology",
     "metodologias agiles": "Agile Methodology",
