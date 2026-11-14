@@ -179,6 +179,14 @@ def main():
     logger.info(f"METRIC - Silhouette Score (excl. noise): {sil_score:.4f}")
     logger.info("=" * 60)
 
+    # Minimum silhouette score safety gate before deployment
+    if args.deploy and sil_score < 0.35:
+        logger.critical(
+            f"Quality gate failure: Silhouette Score ({sil_score:.4f}) is below minimum production threshold (0.35). "
+            f"Aborting deployment to prevent catalog corruption."
+        )
+        sys.exit(1)
+
     # 4. Generate Visualization
     plot_path = plot_and_save_clusters(results["X_reduced"], results["final_labels"], args.plot_name)
 
@@ -249,7 +257,7 @@ def main():
             })
 
         # Determine dominant market tier and salaries for this cluster
-        cluster_offer_indices = [idx for idx, l in enumerate(final_labels) if l == k]
+        cluster_offer_indices = [idx for idx, lbl in enumerate(final_labels) if lbl == k]
         cluster_offers_subset = [valid_offers[idx] for idx in cluster_offer_indices]
 
         tier_counts = {}

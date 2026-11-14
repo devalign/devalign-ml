@@ -49,7 +49,7 @@ class ClusteringPipeline:
         labels = self.clusterer.fit_predict(X_reduced)
 
         unique_labels = set(labels)
-        non_noise_labels = sorted([l for l in unique_labels if l != -1])
+        non_noise_labels = sorted([lbl for lbl in unique_labels if lbl != -1])
         n_clusters = len(non_noise_labels)
         noise_count = int(np.sum(labels == -1))
         noise_pct = (noise_count / len(labels)) * 100
@@ -86,7 +86,7 @@ class ClusteringPipeline:
         # Compute 1024d centroid vectors for each cluster (using core non-noise members)
         cluster_centroids_1024d = {}
         for k in non_noise_labels:
-            core_indices = [idx for idx, l in enumerate(labels) if l == k]
+            core_indices = [idx for idx, lbl in enumerate(labels) if lbl == k]
             core_vectors = vectors[core_indices]
             cluster_centroids_1024d[k] = np.mean(core_vectors, axis=0).tolist()
 
