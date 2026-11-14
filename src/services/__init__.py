@@ -1,12 +1,12 @@
 """Services package for devalign-ml."""
 
-from src.services.salary_service import SalaryNormalizer
 from src.services.naming_service import (
     ClusterNamingStrategy,
-    TaxonomyNamingStrategy,
     LLMNamingStrategy,
+    TaxonomyNamingStrategy,
     get_naming_strategy,
 )
+from src.services.salary_service import SalaryNormalizer
 
 __all__ = [
     "SalaryNormalizer",

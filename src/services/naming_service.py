@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from src.domain.interfaces import ClusterNamingStrategy
 from src import config
+from src.domain.interfaces import ClusterNamingStrategy
 
 logger = logging.getLogger(__name__)
 

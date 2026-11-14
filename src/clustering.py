@@ -27,7 +27,21 @@ class ClusteringPipeline:
         )
 
     def run(self, vectors):
-        """Runs UMAP + HDBSCAN, computes metrics, and reassigns noise points."""
+        """Runs UMAP + HDBSCAN, computes metrics, and preserves noise points."""
+        if len(vectors) <= config.UMAP_N_COMPONENTS:
+            logger.error(
+                f"Sample size ({len(vectors)}) is smaller than or equal to UMAP n_components "
+                f"({config.UMAP_N_COMPONENTS}). Unable to cluster."
+            )
+            return {
+                "labels": np.full(len(vectors), -1),
+                "final_labels": np.full(len(vectors), -1),
+                "X_reduced": np.zeros((len(vectors), config.UMAP_N_COMPONENTS)),
+                "silhouette_score": 0.0,
+                "centroids_1024d": {},
+                "non_noise_labels": [],
+            }
+
         logger.info(f"Applying UMAP reduction (1024d -> {config.UMAP_N_COMPONENTS}d)...")
         X_reduced = self.reducer.fit_transform(vectors)
 
