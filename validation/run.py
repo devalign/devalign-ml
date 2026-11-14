@@ -30,7 +30,7 @@ def _load_clusters_from_db(args: argparse.Namespace) -> list:
     from src import config as ml_config
     from src.data_loader import load_raw_data, process_job_offer_vectors
     from src.clustering import ClusteringPipeline
-    from src.utils import generate_cluster_names_batch, generate_cluster_name
+    from src.services.naming_service import get_naming_strategy
     import numpy as np
     import pandas as pd
 
@@ -81,17 +81,9 @@ def _load_clusters_from_db(args: argparse.Namespace) -> list:
         matrix_rows.append(row)
     df = pd.DataFrame(matrix_rows)
 
-    # Generar nombres de clúster
-    cluster_skills_list = []
-    for k in non_noise_labels:
-        cluster_df = df[df["cluster_label"] == k]
-        freqs = cluster_df[all_skills].mean()
-        top5 = list(freqs[freqs >= 0.15].sort_values(ascending=False).index[:5])
-        cluster_skills_list.append(top5)
-
-    batch_names = generate_cluster_names_batch(cluster_skills_list)
-
-    # Construir objetos Cluster
+    # Construir objetos Cluster y nombrar mediante estrategia unificada
+    naming_strategy = get_naming_strategy()
+    global_skill_freq = df[all_skills].mean()
     clusters = []
     for idx, k in enumerate(non_noise_labels):
         cluster_df = df[df["cluster_label"] == k]
@@ -109,8 +101,15 @@ def _load_clusters_from_db(args: argparse.Namespace) -> list:
                 ict_score=7.0,
             ))
 
-        name = (batch_names[idx] if batch_names and idx < len(batch_names)
-                else f"Cluster {k}")
+        distinctiveness = {}
+        for s in top_skills.index[:5]:
+            cf = float(freqs.get(s, 0.0))
+            gf = float(global_skill_freq.get(s, 0.0))
+            distinctiveness[s] = (cf / (gf + 1e-4)) * (cf ** 1.5)
+
+        sorted_distinctive = dict(sorted(distinctiveness.items(), key=lambda x: x[1], reverse=True))
+        name = naming_strategy.name_cluster(sorted_distinctive)
+
         clusters.append(Cluster(
             name=name,
             centroid_skills=centroid_skills,

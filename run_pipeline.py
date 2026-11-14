@@ -13,7 +13,7 @@ logger = logging.getLogger("run_pipeline")
 from src import config
 from src.data_loader import load_raw_data, process_job_offer_vectors, get_supabase_client, GENERIC_OFFICE_SKILLS
 from src.clustering import ClusteringPipeline
-from src.naming import infer_cluster_name
+from src.services.naming_service import get_naming_strategy
 from src.utils import plot_and_save_clusters
 
 def parse_args():
@@ -356,9 +356,10 @@ def main():
         f"(threshold={config.COSINE_DEDUP_THRESHOLD}). Remaining: {len(cluster_results)}"
     )
 
-    # 6. Generate Cluster Names via taxonomy (no LLM)
+    # 6. Generate Cluster Names via Strategy (Taxonomy / LLM)
     # -------------------------------------------------------------------------
-    logger.info("Generating cluster names via taxonomy (deterministic, no LLM)...")
+    logger.info("Generating cluster names via configured naming strategy...")
+    naming_strategy = get_naming_strategy()
     global_skill_freq = df[all_skills].mean()
     seen_names: dict = {}
     for cr in cluster_results:
@@ -374,7 +375,7 @@ def main():
             distinctiveness[s] = score
         
         sorted_distinctive = dict(sorted(distinctiveness.items(), key=lambda x: x[1], reverse=True))
-        name = infer_cluster_name(sorted_distinctive, cr["compatible_roles"])
+        name = naming_strategy.name_cluster(sorted_distinctive, cr["compatible_roles"])
 
         # Ensure uniqueness: if this name was already used, append a brief differentiator
         if name in seen_names:
