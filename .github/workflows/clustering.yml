@@ -1,15 +1,19 @@
-name: Bi-weekly Clustering Pipeline
+name: Clustering Pipeline & Quality Gates
 
 on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
   schedule:
     # Se ejecuta quincenalmente (los días 1 y 15 de cada mes a las 07:00 UTC)
-    # Esto ocurre el domingo posterior, o simplemente fijos los días 1 y 15.
     - cron: '0 7 1,15 * *'
   workflow_dispatch:
     # Permite la ejecución manual desde la interfaz web de GitHub
 
 jobs:
   run-pipeline:
+    name: Lint, Test & Deploy
     runs-on: ubuntu-latest
 
     steps:
@@ -27,13 +31,19 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run Clustering and Deploy to Supabase
+      - name: Lint with Ruff
+        run: |
+          ruff check .
+
+      - name: Run Pytest Suite
+        run: |
+          pytest tests/ -v
+
+      - name: Run Clustering and Safe Sync to Supabase
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
-          LLM_PROVIDER: "openai"
-          LLM_MODEL: "gpt-4o-mini"
+          LLM_PROVIDER: "taxonomy"
         run: |
           python run_pipeline.py --deploy --no-cache
