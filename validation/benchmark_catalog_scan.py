@@ -60,10 +60,41 @@ CLUSTERS_DUMP = os.path.join(DATA_DIR, "clusters_dump.json")
 OUT_JSON = os.path.join(RESULTS_DIR, "catalog_scan_benchmark.json")
 OUT_MD = os.path.join(RESULTS_DIR, "catalog_scan_benchmark.md")
 
+NORMALIZE_SEP_RE = re.compile(r"[\s.\-_/]+")
+PAREN_QUALIFIER_RE = re.compile(r"\([^()]*\)")
+
+
+def _normalize_token(text: str) -> str:
+    """Lowercase and strip whitespace/punctuation separators using the canonical regex."""
+    return NORMALIZE_SEP_RE.sub("", text.lower())
+
+
+def _strip_parenthetical_qualifier(name: str) -> str:
+    """Remove Lightcast parenthetical qualifiers such as ' (Programming Language)'."""
+    return PAREN_QUALIFIER_RE.sub("", name).strip()
+
+
+def _read_json(path: str) -> Any:
+    """Synchronously load a UTF-8 JSON file (invoked via asyncio.to_thread in async code)."""
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _write_json(path: str, payload: Any) -> None:
+    """Synchronously write a UTF-8 JSON file (invoked via asyncio.to_thread in async code)."""
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+
+
+def _write_text(path: str, content: str) -> None:
+    """Synchronously write a UTF-8 text file (invoked via asyncio.to_thread in async code)."""
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
 
 def normalize_skill_name_strict(name: str) -> str:
     """Exact normalization used in validation/benchmark_cv_extraction.py."""
-    clean = re.sub(r"[\s\.\-_/]+", "", name.lower())
+    clean = _normalize_token(name)
     alias_map = {
         "reactjs": "react",
         "vuejs": "vue",
@@ -83,8 +114,8 @@ def normalize_skill_name_strict(name: str) -> str:
 
 def normalize_skill_name_canonical(name: str) -> str:
     """Taxonomic canonical normalization stripping Lightcast parenthetical qualifiers."""
-    base = re.sub(r"\s*\(.*?\)\s*", "", name).strip()
-    clean = re.sub(r"[\s\.\-_/]+", "", base.lower())
+    base = _strip_parenthetical_qualifier(name)
+    clean = _normalize_token(base)
     alias_map = {
         "reactjs": "react",
         "react": "react",
@@ -134,6 +165,48 @@ def normalize_skill_name_canonical(name: str) -> str:
     return alias_map.get(clean, clean)
 
 
+def _evaluate_single_cv(
+    item: dict[str, Any],
+    extracted_map: dict[str, list[str]],
+    norm_fn: Any,
+) -> tuple[dict[str, Any], int, int, int, bool]:
+    """Compute extraction metrics for a single CV entry."""
+    cv_id = item["id"]
+    gt_skills = item["ground_truth_skills"]
+    ext_skills = extracted_map.get(cv_id, [])
+
+    gt_norm = {norm_fn(s): s for s in gt_skills}
+    ext_norm = {norm_fn(s): s for s in ext_skills}
+
+    tp_keys = set(gt_norm.keys()) & set(ext_norm.keys())
+    fp_keys = set(ext_norm.keys()) - set(gt_norm.keys())
+    fn_keys = set(gt_norm.keys()) - set(ext_norm.keys())
+
+    tp, fp, fn = len(tp_keys), len(fp_keys), len(fn_keys)
+    prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = (2 * prec * rec) / (prec + rec) if (prec + rec) > 0 else 0.0
+    is_exact = fp == 0 and fn == 0
+
+    row = {
+        "id": cv_id,
+        "role": item["role"],
+        "seniority": item["seniority"],
+        "ground_truth_count": len(gt_skills),
+        "extracted_count": len(ext_skills),
+        "true_positives": tp,
+        "false_positives": fp,
+        "false_negatives": fn,
+        "precision": round(prec, 4),
+        "recall": round(rec, 4),
+        "f1_score": round(f1, 4),
+        "exact_match": is_exact,
+        "spurious_fps": sorted(ext_norm[k] for k in fp_keys),
+        "omitted_fns": sorted(gt_norm[k] for k in fn_keys),
+    }
+    return row, tp, fp, fn, is_exact
+
+
 def compute_metrics(
     cvs_dataset: list[dict],
     extracted_map: dict[str, list[str]],
@@ -147,49 +220,13 @@ def compute_metrics(
     exact_match_count = 0
 
     for item in cvs_dataset:
-        cv_id = item["id"]
-        gt_skills = item["ground_truth_skills"]
-        ext_skills = extracted_map.get(cv_id, [])
-
-        gt_norm = {norm_fn(s): s for s in gt_skills}
-        ext_norm = {norm_fn(s): s for s in ext_skills}
-
-        tp_keys = set(gt_norm.keys()) & set(ext_norm.keys())
-        fp_keys = set(ext_norm.keys()) - set(gt_norm.keys())
-        fn_keys = set(gt_norm.keys()) - set(ext_norm.keys())
-
-        tp = len(tp_keys)
-        fp = len(fp_keys)
-        fn = len(fn_keys)
-
+        row, tp, fp, fn, is_exact = _evaluate_single_cv(item, extracted_map, norm_fn)
+        per_cv.append(row)
         total_tp += tp
         total_fp += fp
         total_fn += fn
-
-        prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = (2 * prec * rec) / (prec + rec) if (prec + rec) > 0 else 0.0
-
-        is_exact = (len(fp_keys) == 0 and len(fn_keys) == 0)
         if is_exact:
             exact_match_count += 1
-
-        per_cv.append({
-            "id": cv_id,
-            "role": item["role"],
-            "seniority": item["seniority"],
-            "ground_truth_count": len(gt_skills),
-            "extracted_count": len(ext_skills),
-            "true_positives": tp,
-            "false_positives": fp,
-            "false_negatives": fn,
-            "precision": round(prec, 4),
-            "recall": round(rec, 4),
-            "f1_score": round(f1, 4),
-            "exact_match": is_exact,
-            "spurious_fps": sorted([ext_norm[k] for k in fp_keys]),
-            "omitted_fns": sorted([gt_norm[k] for k in fn_keys]),
-        })
 
     n = len(cvs_dataset)
     macro_p = sum(r["precision"] for r in per_cv) / n if n > 0 else 0.0
@@ -230,121 +267,123 @@ def sample_std(values: list[float]) -> float:
     return math.sqrt(var)
 
 
+def _parse_skill_dict(d: dict[str, Any], include_status: bool = True) -> Skill:
+    """Convert a serialized skill JSON entry into a Skill domain entity."""
+    nature = SkillNature.CONCEPT if d.get("nature") == "concept" else SkillNature.TECH
+    kwargs: dict[str, Any] = {
+        "id": UUID(d["id"]) if d.get("id") else None,
+        "name": d["name"],
+        "nature": nature,
+        "domain_tags": d.get("domain_tags") or [],
+        "core_domains": d.get("core_domains") or [],
+        "aliases": d.get("aliases") or [],
+        "weight": d.get("weight") or 1.0,
+    }
+    if include_status:
+        kwargs["status"] = d.get("status") or "active"
+    else:
+        kwargs["frequency"] = d.get("frequency")
+    return Skill(**kwargs)
+
+
+def _parse_cluster_dict(d: dict[str, Any], default_index: int) -> TechCluster:
+    """Convert a serialized cluster JSON entry into a TechCluster domain entity."""
+    centroid_skills = [
+        _parse_skill_dict(s, include_status=False) for s in d.get("centroid_skills", [])
+    ]
+    return TechCluster(
+        id=UUID(d["id"]),
+        name=d["name"],
+        description=d.get("description", ""),
+        centroid_skills=centroid_skills,
+        job_offer_count=d.get("job_offer_count", 0),
+        cluster_index=d.get("cluster_index", default_index),
+        tier=str(d.get("tier", "standard")),
+        compatible_roles=d.get("compatible_roles") or [],
+        market_insights=d.get("market_insights") or {},
+    )
+
+
 def load_in_memory_catalog() -> tuple[list[Skill], list[TechCluster]]:
     """Loads skills and clusters from persistent json dumps into domain entities."""
-    with open(SKILLS_DUMP, "r", encoding="utf-8") as f:
-        skills_raw = json.load(f)
+    skills_raw = _read_json(SKILLS_DUMP)
+    all_skills = [_parse_skill_dict(d, include_status=True) for d in skills_raw]
 
-    all_skills = []
-    for d in skills_raw:
-        nature = SkillNature.CONCEPT if d["nature"] == "concept" else SkillNature.TECH
-        all_skills.append(
-            Skill(
-                id=UUID(d["id"]) if d.get("id") else None,
-                name=d["name"],
-                nature=nature,
-                domain_tags=d.get("domain_tags") or [],
-                core_domains=d.get("core_domains") or [],
-                aliases=d.get("aliases") or [],
-                weight=d.get("weight") or 1.0,
-                status=d.get("status") or "active",
-            )
-        )
-
-    with open(CLUSTERS_DUMP, "r", encoding="utf-8") as f:
-        clusters_raw = json.load(f)
-
-    all_clusters = []
-    for d in clusters_raw:
-        centroid_skills = []
-        for s in d.get("centroid_skills", []):
-            s_nat = SkillNature.CONCEPT if s.get("nature") == "concept" else SkillNature.TECH
-            centroid_skills.append(
-                Skill(
-                    id=UUID(s["id"]) if s.get("id") else None,
-                    name=s["name"],
-                    nature=s_nat,
-                    domain_tags=s.get("domain_tags") or [],
-                    core_domains=s.get("core_domains") or [],
-                    aliases=s.get("aliases") or [],
-                    weight=s.get("weight") or 1.0,
-                    frequency=s.get("frequency"),
-                )
-            )
-        all_clusters.append(
-            TechCluster(
-                id=UUID(d["id"]),
-                name=d["name"],
-                description=d.get("description", ""),
-                centroid_skills=centroid_skills,
-                job_offer_count=d.get("job_offer_count", 0),
-                cluster_index=d.get("cluster_index", len(all_clusters)),
-                tier=str(d.get("tier", "standard")),
-                compatible_roles=d.get("compatible_roles") or [],
-                market_insights=d.get("market_insights") or {},
-            )
-        )
-
+    clusters_raw = _read_json(CLUSTERS_DUMP)
+    all_clusters = [
+        _parse_cluster_dict(d, idx) for idx, d in enumerate(clusters_raw)
+    ]
     return all_skills, all_clusters
 
 
 class MockSkillRepo:
     def __init__(self, skills: list[Skill]):
         self._skills = skills
+
     async def get_all_skills(self) -> list[Skill]:
+        await asyncio.sleep(0)
         return self._skills
 
 
-async def main():
-    logger.info("Starting Catalog Scan Benchmark and Telemetry Latency Measurement")
-    np.random.seed(42)
-
-    with open(GT_FILE, "r", encoding="utf-8") as f:
-        cvs_dataset = json.load(f)
-
-    with open(OLD_CACHE_FILE, "r", encoding="utf-8") as f:
-        old_llm_cache = json.load(f)
-
-    all_skills, active_clusters = load_in_memory_catalog()
-    logger.info(f"Loaded {len(all_skills)} skills and {len(active_clusters)} active clusters in memory.")
-
-    catalog_service = SkillCatalogService(MockSkillRepo(all_skills), None)
-
-    # -------------------------------------------------------------
-    # TASK 1: Benchmark Catalog Scan Extraction
-    # -------------------------------------------------------------
-    logger.info("Executing deterministic catalog scan on 15 reference CVs...")
-    catalog_extracted_map: dict[str, list[str]] = {}
+async def _run_catalog_extraction(
+    cvs_dataset: list[dict[str, Any]],
+    catalog_service: SkillCatalogService,
+    all_skills: list[Skill],
+) -> dict[str, list[str]]:
+    """Run deterministic catalog scan + normalization for every CV in the dataset."""
+    extracted_map: dict[str, list[str]] = {}
     for item in cvs_dataset:
-        cv_text = item["cv_text"]
         detected = await catalog_service.scan_text_for_catalog_skills(
-            cv_text, existing_skills_cache=all_skills
+            item["cv_text"], existing_skills_cache=all_skills
         )
         normalized = await catalog_service.normalize_extracted_skills(
             detected, existing_skills_cache=all_skills
         )
-        catalog_extracted_map[item["id"]] = [s["name"] for s in normalized]
+        extracted_map[item["id"]] = [s["name"] for s in normalized]
+    return extracted_map
 
-    old_llm_metrics = compute_metrics(cvs_dataset, old_llm_cache, normalize_skill_name_strict)
-    catalog_strict_metrics = compute_metrics(cvs_dataset, catalog_extracted_map, normalize_skill_name_strict)
-    catalog_canonical_metrics = compute_metrics(cvs_dataset, catalog_extracted_map, normalize_skill_name_canonical)
 
-    catalog_clean_set = {re.sub(r"[\s\.\-_/]+", "", re.sub(r"\s*\(.*?\)\s*", "", s.name).lower()): s.name for s in all_skills}
-    for s in all_skills:
-        for a in s.aliases:
-            if a:
-                catalog_clean_set[re.sub(r"[\s\.\-_/]+", "", a.lower())] = s.name
+def _build_catalog_clean_set(all_skills: list[Skill]) -> dict[str, str]:
+    """Map normalized canonical names and aliases to canonical catalog skill names."""
+    clean_set = {
+        _normalize_token(_strip_parenthetical_qualifier(s.name)): s.name
+        for s in all_skills
+    }
+    for skill in all_skills:
+        for alias in skill.aliases:
+            if alias:
+                clean_set[_normalize_token(alias)] = skill.name
+    return clean_set
 
-    fn_diagnostic_per_cv = {}
-    fp_diagnostic_per_cv = {}
+
+def _classify_fp_cause(fp_skill: str) -> str:
+    """Categorize a false-positive catalog extraction into its diagnostic bucket."""
+    lowered = fp_skill.lower()
+    broad_terms = ["developer", "dashboards", "automation", "cloud", "security", "web application"]
+    if any(term in lowered for term in broad_terms):
+        return "Broad occupational / conceptual catalog match in full CV text"
+    if "3m" in lowered or "sqc" in lowered:
+        return "Lexical token / boundary collision in text parsing"
+    if "api" in lowered or "rest" in lowered:
+        return "Over-generic alias matching catalog technology"
+    return "Catalog technology mentioned in experience section but outside ground-truth scope"
+
+
+def _build_error_diagnostics(
+    per_cv_results: list[dict[str, Any]],
+    catalog_clean_set: dict[str, str],
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, list[dict[str, Any]]], int, int]:
+    """Classify per-CV false negatives and false positives against the catalog."""
+    fn_diagnostic_per_cv: dict[str, list[dict[str, Any]]] = {}
+    fp_diagnostic_per_cv: dict[str, list[dict[str, Any]]] = {}
     out_of_catalog_fn_count = 0
     in_catalog_missed_count = 0
 
-    for r in catalog_canonical_metrics["per_cv_results"]:
-        cv_id = r["id"]
-        fn_diagnostic_per_cv[cv_id] = []
-        for fn_skill in r["omitted_fns"]:
-            clean_fn = re.sub(r"[\s\.\-_/]+", "", fn_skill.lower())
+    for row in per_cv_results:
+        cv_id = row["id"]
+        fn_entries = []
+        for fn_skill in row["omitted_fns"]:
+            clean_fn = _normalize_token(fn_skill)
             in_cat = clean_fn in catalog_clean_set
             if in_cat:
                 in_catalog_missed_count += 1
@@ -352,43 +391,24 @@ async def main():
             else:
                 out_of_catalog_fn_count += 1
                 cause = "Out-of-catalog technology (custom skill requiring human gate)"
-            fn_diagnostic_per_cv[cv_id].append({"skill": fn_skill, "cause": cause, "in_catalog": in_cat})
+            fn_entries.append({"skill": fn_skill, "cause": cause, "in_catalog": in_cat})
+        fn_diagnostic_per_cv[cv_id] = fn_entries
 
-        fp_diagnostic_per_cv[cv_id] = []
-        for fp_skill in r["spurious_fps"]:
-            if any(w in fp_skill.lower() for w in ["developer", "dashboards", "automation", "cloud", "security", "web application"]):
-                cause = "Broad occupational / conceptual catalog match in full CV text"
-            elif "3m" in fp_skill.lower() or "sqc" in fp_skill.lower():
-                cause = "Lexical token / boundary collision in text parsing"
-            elif "api" in fp_skill.lower() or "rest" in fp_skill.lower():
-                cause = "Over-generic alias matching catalog technology"
-            else:
-                cause = "Catalog technology mentioned in experience section but outside ground-truth scope"
-            fp_diagnostic_per_cv[cv_id].append({"skill": fp_skill, "cause": cause})
+        fp_diagnostic_per_cv[cv_id] = [
+            {"skill": fp_skill, "cause": _classify_fp_cause(fp_skill)}
+            for fp_skill in row["spurious_fps"]
+        ]
 
-    human_sim_metrics = {
-        "exact_match_ratio": 1.0,
-        "exact_match_count": 15,
-        "micro_metrics": {"precision": 1.0, "recall": 1.0, "f1_score": 1.0},
-        "macro_metrics": {"precision": 1.0, "recall": 1.0, "f1_score": 1.0},
-        "user_added_custom_skills_total": out_of_catalog_fn_count,
-        "user_added_custom_skills_per_cv_mean": round(out_of_catalog_fn_count / 15, 2),
-        "user_dismissed_spurious_chips_total": catalog_canonical_metrics["total_fp"],
-        "user_dismissed_spurious_chips_per_cv_mean": round(catalog_canonical_metrics["total_fp"] / 15, 2),
-    }
+    return fn_diagnostic_per_cv, fp_diagnostic_per_cv, out_of_catalog_fn_count, in_catalog_missed_count
 
-    # -------------------------------------------------------------
-    # TASK 2: Latency Measurement per Stage (5 reps per CV = 75 runs)
-    # -------------------------------------------------------------
-    logger.info("Measuring operational latency per stage (5 repetitions x 15 CVs = 75 runs)...")
+
+def _prepare_cv_documents(cvs_dataset: list[dict[str, Any]]) -> tuple[dict[str, bytes], dict[str, bytes]]:
+    """Render synthetic DOCX and PDF payloads in memory for parsing latency benchmarks."""
     import docx
-    import matplotlib
     import matplotlib.pyplot as plt
 
-    parser_service = LocalCVParserService()
-
-    cv_docx_bytes = {}
-    cv_pdf_bytes = {}
+    cv_docx_bytes: dict[str, bytes] = {}
+    cv_pdf_bytes: dict[str, bytes] = {}
     for item in cvs_dataset:
         doc = docx.Document()
         doc.add_paragraph(item["cv_text"])
@@ -403,81 +423,84 @@ async def main():
         plt.close(fig)
         cv_pdf_bytes[item["id"]] = buf_pdf.getvalue()
 
-    n_reps = 5
-    latencies_parsing_docx = []
-    latencies_parsing_pdf = []
-    latencies_scan = []
-    latencies_normalization = []
-    latencies_graph = []
-    latencies_interactive_total = []
+    return cv_docx_bytes, cv_pdf_bytes
 
-    for rep in range(n_reps):
+
+async def _measure_stage_latencies(
+    cvs_dataset: list[dict[str, Any]],
+    parser_service: LocalCVParserService,
+    catalog_service: SkillCatalogService,
+    all_skills: list[Skill],
+    active_clusters: list[TechCluster],
+    cv_docx_bytes: dict[str, bytes],
+    cv_pdf_bytes: dict[str, bytes],
+    n_reps: int = 5,
+) -> dict[str, list[float]]:
+    """Measure per-stage interactive pipeline latencies across repeated CV passes."""
+    latencies: dict[str, list[float]] = {
+        "parsing_docx": [],
+        "parsing_pdf": [],
+        "scan": [],
+        "normalization": [],
+        "graph": [],
+        "interactive_total": [],
+    }
+
+    for _ in range(n_reps):
         for item in cvs_dataset:
             cv_id = item["id"]
             cv_text = item["cv_text"]
 
-            # 1. Parsing DOCX
             t0 = time.perf_counter()
-            _ = parser_service._extract_from_docx(cv_docx_bytes[cv_id])
-            latencies_parsing_docx.append(time.perf_counter() - t0)
+            parser_service._extract_from_docx(cv_docx_bytes[cv_id])
+            latencies["parsing_docx"].append(time.perf_counter() - t0)
 
-            # 1b. Parsing PDF
             t0 = time.perf_counter()
-            _ = parser_service._extract_from_pdf(cv_pdf_bytes[cv_id])
+            parser_service._extract_from_pdf(cv_pdf_bytes[cv_id])
             t_pdf = time.perf_counter() - t0
-            latencies_parsing_pdf.append(t_pdf)
+            latencies["parsing_pdf"].append(t_pdf)
 
-            # 2. Catalog Scan
             t0 = time.perf_counter()
             detected = await catalog_service.scan_text_for_catalog_skills(
                 cv_text, existing_skills_cache=all_skills
             )
             t_scan = time.perf_counter() - t0
-            latencies_scan.append(t_scan)
+            latencies["scan"].append(t_scan)
 
-            # 3. Normalization (in-memory difflib & alias matching; pgvector is N/A in CV path)
             t0 = time.perf_counter()
             normalized = await catalog_service.normalize_extracted_skills(
                 detected, existing_skills_cache=all_skills
             )
             t_norm = time.perf_counter() - t0
-            latencies_normalization.append(t_norm)
+            latencies["normalization"].append(t_norm)
+            latencies["interactive_total"].append(t_pdf + t_scan + t_norm)
 
-            # Interactive phase total up to "skills_detected"
-            latencies_interactive_total.append(t_pdf + t_scan + t_norm)
-
-            # 4. Graph inference + affinity
-            detected_entities = [s for s in all_skills if s.name in [x["name"] for x in normalized]]
+            norm_names = {x["name"] for x in normalized}
+            detected_entities = [s for s in all_skills if s.name in norm_names]
             t0 = time.perf_counter()
-            _ = compute_affinities_and_domains(detected_entities, active_clusters)
-            latencies_graph.append(time.perf_counter() - t0)
+            compute_affinities_and_domains(detected_entities, active_clusters)
+            latencies["graph"].append(time.perf_counter() - t0)
 
-    # -------------------------------------------------------------
-    # TASK 2b: Phase B (extract_llm_insights) Latency & Success Rate
-    # -------------------------------------------------------------
-    logger.info("Measuring Phase B (extract_llm_insights) via OpenAI gpt-4o-mini...")
-    llm_service = get_llm_service()
-    use_case = ProfileUserFromCVUseCase(
-        cv_parser=parser_service,
-        cluster_repository=None,
-        profile_repository=None,
-        llm_service=llm_service,
-        skill_repository=None,
-    )
+    return latencies
 
-    phase_b_latencies = []
+
+async def _measure_phase_b_insights(
+    cvs_dataset: list[dict[str, Any]],
+    use_case: ProfileUserFromCVUseCase,
+) -> tuple[list[float], int, dict[str, dict[str, Any]]]:
+    """Measure Phase B LLM synthesis latency and output coverage across CVs."""
+    phase_b_latencies: list[float] = []
     phase_b_successes = 0
-    phase_b_outputs = {}
+    phase_b_outputs: dict[str, dict[str, Any]] = {}
 
     for item in cvs_dataset:
         cv_id = item["id"]
-        cv_text = item["cv_text"]
         t0 = time.perf_counter()
         try:
             insights = await use_case.extract_llm_insights(
                 user_id=None,
                 cv_id=None,
-                cv_text=cv_text,
+                cv_text=item["cv_text"],
             )
             dt = time.perf_counter() - t0
             phase_b_latencies.append(dt)
@@ -490,43 +513,58 @@ async def main():
                 "latency_s": round(dt, 4),
                 "success": True,
             }
-        except Exception as e:
+        except Exception as exc:
             dt = time.perf_counter() - t0
             phase_b_latencies.append(dt)
             phase_b_outputs[cv_id] = {
                 "role_in_gt": item["role"],
-                "error": str(e),
+                "error": str(exc),
                 "latency_s": round(dt, 4),
                 "success": False,
             }
 
-    exact_role_matches = 0
-    for cv_id, p_out in phase_b_outputs.items():
-        if p_out.get("success"):
-            gt_role = p_out["role_in_gt"].lower()
-            ext_role = (p_out["current_job_role_extracted"] or "").lower()
-            gt_tokens = set(re.findall(r"\w+", gt_role))
-            ext_tokens = set(re.findall(r"\w+", ext_role))
-            if gt_tokens & ext_tokens:
-                exact_role_matches += 1
+    return phase_b_latencies, phase_b_successes, phase_b_outputs
 
-    def stats_dict(arr: list[float]) -> dict[str, float]:
-        arr_np = np.array(arr)
-        return {
-            "mean": round(float(np.mean(arr_np)), 4),
-            "std": round(float(sample_std(arr)), 4),
-            "p50": round(float(np.percentile(arr_np, 50)), 4),
-            "p95": round(float(np.percentile(arr_np, 95)), 4),
-            "min": round(float(np.min(arr_np)), 4),
-            "max": round(float(np.max(arr_np)), 4),
-            "samples": len(arr),
-        }
 
-    latency_summary = {
-        "pdf_parsing": stats_dict(latencies_parsing_pdf),
-        "docx_parsing": stats_dict(latencies_parsing_docx),
-        "catalog_scan": stats_dict(latencies_scan),
-        "semantic_normalization_in_memory": stats_dict(latencies_normalization),
+def _count_role_matches(phase_b_outputs: dict[str, dict[str, Any]]) -> int:
+    """Count CVs where extracted job role shares lexical tokens with ground-truth role."""
+    matches = 0
+    for p_out in phase_b_outputs.values():
+        if not p_out.get("success"):
+            continue
+        gt_tokens = set(re.findall(r"\w+", p_out["role_in_gt"].lower()))
+        ext_tokens = set(re.findall(r"\w+", (p_out["current_job_role_extracted"] or "").lower()))
+        if gt_tokens & ext_tokens:
+            matches += 1
+    return matches
+
+
+def _stats_dict(arr: list[float]) -> dict[str, float]:
+    """Summarize latency samples with mean, sample std, percentiles, and extrema."""
+    arr_np = np.array(arr)
+    return {
+        "mean": round(float(np.mean(arr_np)), 4),
+        "std": round(float(sample_std(arr)), 4),
+        "p50": round(float(np.percentile(arr_np, 50)), 4),
+        "p95": round(float(np.percentile(arr_np, 95)), 4),
+        "min": round(float(np.min(arr_np)), 4),
+        "max": round(float(np.max(arr_np)), 4),
+        "samples": len(arr),
+    }
+
+
+def _build_latency_summary(
+    latencies: dict[str, list[float]],
+    phase_b_latencies: list[float],
+    phase_b_successes: int,
+    total_cvs: int,
+) -> dict[str, Any]:
+    """Assemble the latency summary payload for JSON and Markdown reporting."""
+    return {
+        "pdf_parsing": _stats_dict(latencies["parsing_pdf"]),
+        "docx_parsing": _stats_dict(latencies["parsing_docx"]),
+        "catalog_scan": _stats_dict(latencies["scan"]),
+        "semantic_normalization_in_memory": _stats_dict(latencies["normalization"]),
         "semantic_normalization_pgvector": {
             "mean": 0.0,
             "std": 0.0,
@@ -534,17 +572,33 @@ async def main():
             "status": "bypassed_in_cv_path",
             "explanation": "scan_text_for_catalog_skills matches canonical terms directly; pgvector is only called in offer ingestion (NormalizeJobOffersUseCase) and sensitivity sweeps",
         },
-        "graph_inference_and_affinity": stats_dict(latencies_graph),
-        "interactive_phase_total_up_to_skills_detected": stats_dict(latencies_interactive_total),
+        "graph_inference_and_affinity": _stats_dict(latencies["graph"]),
+        "interactive_phase_total_up_to_skills_detected": _stats_dict(latencies["interactive_total"]),
         "phase_b_llm_insights": {
-            **stats_dict(phase_b_latencies),
-            "success_rate": round((phase_b_successes / len(cvs_dataset)) * 100, 2),
+            **_stats_dict(phase_b_latencies),
+            "success_rate": round((phase_b_successes / total_cvs) * 100, 2),
             "execution_mode": "asynchronous_fastapi_background_task",
             "blocking_behavior": "Immediate HTTP 202 on CV upload; Phase A sets 'skills_detected_partial'; Phase B finishes before final diagnosis persistence (finalize endpoint blocks if status != 'skills_detected')",
         },
     }
 
-    consolidated_results = {
+
+def _build_consolidated_results(
+    cvs_dataset: list[dict[str, Any]],
+    old_llm_metrics: dict[str, Any],
+    catalog_strict_metrics: dict[str, Any],
+    catalog_canonical_metrics: dict[str, Any],
+    human_sim_metrics: dict[str, Any],
+    fn_diagnostic_per_cv: dict[str, list[dict[str, Any]]],
+    fp_diagnostic_per_cv: dict[str, list[dict[str, Any]]],
+    latency_summary: dict[str, Any],
+    phase_b_successes: int,
+    exact_role_matches: int,
+    phase_b_outputs: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Build the full benchmark JSON report structure."""
+    total_cvs = len(cvs_dataset)
+    return {
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "execution_environment": {
@@ -583,15 +637,15 @@ async def main():
                 "tau_threshold_value": 0.88,
                 "tau_threshold_locations": [
                     "devalign-api/src/ml_engine/application/use_cases.py:1444 (NormalizeJobOffersUseCase: cosine similarity on dense embeddings in pgvector)",
-                    "devalign-api/src/ml_engine/application/skill_catalog_service.py:240 (normalize_extracted_skills: difflib SequenceMatcher ratio cutoff for fuzzy fallback)"
+                    "devalign-api/src/ml_engine/application/skill_catalog_service.py:240 (normalize_extracted_skills: difflib SequenceMatcher ratio cutoff for fuzzy fallback)",
                 ],
                 "phase_b_details": {
                     "prompt_purpose": "Synthesize core technical profile (current_job_role, professional_summary, years_experience) without re-extracting skills",
                     "char_limit": 15000,
                     "char_limit_code_reference": "devalign-api/src/ml_engine/application/use_cases.py:540",
                     "stored_fields": ["current_job_role", "years_experience", "professional_summary"],
-                }
-            }
+                },
+            },
         },
         "task_1_extraction_benchmark": {
             "old_llm_extractor": old_llm_metrics,
@@ -603,44 +657,50 @@ async def main():
         },
         "task_2_latency_benchmarks": latency_summary,
         "task_3_phase_b_eval": {
-            "success_rate": f"{(phase_b_successes / len(cvs_dataset)) * 100:.1f}%",
-            "total_runs": len(cvs_dataset),
-            "exact_or_substring_role_matches": f"{exact_role_matches}/{len(cvs_dataset)}",
+            "success_rate": f"{(phase_b_successes / total_cvs) * 100:.1f}%",
+            "total_runs": total_cvs,
+            "exact_or_substring_role_matches": f"{exact_role_matches}/{total_cvs}",
             "ground_truth_years_present": False,
             "notes": "ground_truth_cvs.json contains categorical 'role' and 'seniority', but lacks explicit numeric ground truth for years_experience. Extracted values are reported per CV.",
             "per_cv_outputs": phase_b_outputs,
-        }
+        },
     }
 
-    with open(OUT_JSON, "w", encoding="utf-8") as f:
-        json.dump(consolidated_results, f, indent=2, ensure_ascii=False)
-    logger.info(f"Wrote consolidated JSON to {OUT_JSON}")
 
-    # Generate Markdown Summary (all metrics formatted dynamically from actual runs)
-    old_m = old_llm_metrics
-    strict_m = catalog_strict_metrics
-    canon_m = catalog_canonical_metrics
-    human_m = human_sim_metrics
-
-    # Previous baseline recorded prior to fix/catalog-scan-precision (v6 paper & pre-fix dump)
+def _render_markdown_report(
+    all_skills: list[Skill],
+    cvs_dataset: list[dict[str, Any]],
+    old_m: dict[str, Any],
+    strict_m: dict[str, Any],
+    canon_m: dict[str, Any],
+    fn_diagnostic_per_cv: dict[str, list[dict[str, Any]]],
+    fp_diagnostic_per_cv: dict[str, list[dict[str, Any]]],
+    in_catalog_missed_count: int,
+    out_of_catalog_fn_count: int,
+    latency_summary: dict[str, Any],
+    phase_b_successes: int,
+    exact_role_matches: int,
+    phase_b_outputs: dict[str, dict[str, Any]],
+) -> str:
+    """Format the full Markdown benchmark summary report."""
     prev_v6 = {"tp": 160, "fp": 101, "fn": 36, "p": 0.6130, "r": 0.8163, "f1": 0.7002}
     prev_json = {"tp": 167, "fp": 94, "fn": 29, "p": 0.6398, "r": 0.8520, "f1": 0.7309}
 
-    fn_list_lines = []
-    for r in canon_m["per_cv_results"]:
-        for d_fn in fn_diagnostic_per_cv[r["id"]]:
-            tag = "En catálogo" if d_fn["in_catalog"] else "Fuera de catálogo"
-            fn_list_lines.append(f"  - `{r['id']}`: `{d_fn['skill']}` ({tag}: {d_fn['cause']})")
-
-    fp_list_lines = []
-    for r in canon_m["per_cv_results"]:
-        for d_fp in fp_diagnostic_per_cv[r["id"]]:
-            fp_list_lines.append(f"  - `{r['id']}`: `{d_fp['skill']}` ({d_fp['cause']})")
+    fn_list_lines = [
+        f"  - `{r['id']}`: `{d_fn['skill']}` ({'En catálogo' if d_fn['in_catalog'] else 'Fuera de catálogo'}: {d_fn['cause']})"
+        for r in canon_m["per_cv_results"]
+        for d_fn in fn_diagnostic_per_cv[r["id"]]
+    ]
+    fp_list_lines = [
+        f"  - `{r['id']}`: `{d_fp['skill']}` ({d_fp['cause']})"
+        for r in canon_m["per_cv_results"]
+        for d_fp in fp_diagnostic_per_cv[r["id"]]
+    ]
 
     fn_summary_block = "\n".join(fn_list_lines) if fn_list_lines else "  - Ninguna."
     fp_summary_block = "\n".join(fp_list_lines) if fp_list_lines else "  - Ninguna."
 
-    md_content = f"""# Devalign: Benchmark del Escaneo por Catálogo, Telemetría de Latencia y Procedencia Experimental
+    return f"""# Devalign: Benchmark del Escaneo por Catálogo, Telemetría de Latencia y Procedencia Experimental
 
 Fecha de ejecución: `{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}`  
 Entorno de ejecución: Local Windows (win32), Python 3.12.13 (API) / 3.10.10 (ML)  
@@ -784,10 +844,105 @@ Todos los archivos preexistentes en `validation/results/` provienen estrictament
 3. **Impacto de la brecha léxica en la evaluación estricta**: Evaluar un catálogo formal contra un ground truth anotado informalmente con nombres coloquiales (`SQL` en vez de `SQL (Programming Language)`) produce un sesgo artificial severo si no se normalizan las desinencias canónicas de Lightcast.
 """
 
-    with open(OUT_MD, "w", encoding="utf-8") as f:
-        f.write(md_content)
+
+async def main() -> None:
+    logger.info("Starting Catalog Scan Benchmark and Telemetry Latency Measurement")
+    np.random.seed(42)
+
+    cvs_dataset = await asyncio.to_thread(_read_json, GT_FILE)
+    old_llm_cache = await asyncio.to_thread(_read_json, OLD_CACHE_FILE)
+    all_skills, active_clusters = await asyncio.to_thread(load_in_memory_catalog)
+    logger.info(f"Loaded {len(all_skills)} skills and {len(active_clusters)} active clusters in memory.")
+
+    catalog_service = SkillCatalogService(MockSkillRepo(all_skills), None)
+
+    logger.info("Executing deterministic catalog scan on 15 reference CVs...")
+    catalog_extracted_map = await _run_catalog_extraction(cvs_dataset, catalog_service, all_skills)
+
+    old_llm_metrics = compute_metrics(cvs_dataset, old_llm_cache, normalize_skill_name_strict)
+    catalog_strict_metrics = compute_metrics(cvs_dataset, catalog_extracted_map, normalize_skill_name_strict)
+    catalog_canonical_metrics = compute_metrics(cvs_dataset, catalog_extracted_map, normalize_skill_name_canonical)
+
+    catalog_clean_set = _build_catalog_clean_set(all_skills)
+    fn_diagnostic_per_cv, fp_diagnostic_per_cv, out_of_catalog_fn_count, in_catalog_missed_count = (
+        _build_error_diagnostics(catalog_canonical_metrics["per_cv_results"], catalog_clean_set)
+    )
+
+    human_sim_metrics = {
+        "exact_match_ratio": 1.0,
+        "exact_match_count": 15,
+        "micro_metrics": {"precision": 1.0, "recall": 1.0, "f1_score": 1.0},
+        "macro_metrics": {"precision": 1.0, "recall": 1.0, "f1_score": 1.0},
+        "user_added_custom_skills_total": out_of_catalog_fn_count,
+        "user_added_custom_skills_per_cv_mean": round(out_of_catalog_fn_count / 15, 2),
+        "user_dismissed_spurious_chips_total": catalog_canonical_metrics["total_fp"],
+        "user_dismissed_spurious_chips_per_cv_mean": round(catalog_canonical_metrics["total_fp"] / 15, 2),
+    }
+
+    logger.info("Measuring operational latency per stage (5 repetitions x 15 CVs = 75 runs)...")
+    cv_docx_bytes, cv_pdf_bytes = await asyncio.to_thread(_prepare_cv_documents, cvs_dataset)
+    parser_service = LocalCVParserService()
+    latencies = await _measure_stage_latencies(
+        cvs_dataset,
+        parser_service,
+        catalog_service,
+        all_skills,
+        active_clusters,
+        cv_docx_bytes,
+        cv_pdf_bytes,
+    )
+
+    logger.info("Measuring Phase B (extract_llm_insights) via OpenAI gpt-4o-mini...")
+    use_case = ProfileUserFromCVUseCase(
+        cv_parser=parser_service,
+        cluster_repository=None,
+        profile_repository=None,
+        llm_service=get_llm_service(),
+        skill_repository=None,
+    )
+    phase_b_latencies, phase_b_successes, phase_b_outputs = await _measure_phase_b_insights(
+        cvs_dataset, use_case
+    )
+    exact_role_matches = _count_role_matches(phase_b_outputs)
+
+    latency_summary = _build_latency_summary(
+        latencies, phase_b_latencies, phase_b_successes, len(cvs_dataset)
+    )
+    consolidated_results = _build_consolidated_results(
+        cvs_dataset,
+        old_llm_metrics,
+        catalog_strict_metrics,
+        catalog_canonical_metrics,
+        human_sim_metrics,
+        fn_diagnostic_per_cv,
+        fp_diagnostic_per_cv,
+        latency_summary,
+        phase_b_successes,
+        exact_role_matches,
+        phase_b_outputs,
+    )
+    await asyncio.to_thread(_write_json, OUT_JSON, consolidated_results)
+    logger.info(f"Wrote consolidated JSON to {OUT_JSON}")
+
+    md_content = _render_markdown_report(
+        all_skills,
+        cvs_dataset,
+        old_llm_metrics,
+        catalog_strict_metrics,
+        catalog_canonical_metrics,
+        fn_diagnostic_per_cv,
+        fp_diagnostic_per_cv,
+        in_catalog_missed_count,
+        out_of_catalog_fn_count,
+        latency_summary,
+        phase_b_successes,
+        exact_role_matches,
+        phase_b_outputs,
+    )
+    await asyncio.to_thread(_write_text, OUT_MD, md_content)
     logger.info(f"Wrote Markdown summary to {OUT_MD}")
     print(f"Benchmark completed successfully. Files generated:\n  - {OUT_JSON}\n  - {OUT_MD}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

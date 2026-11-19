@@ -79,7 +79,7 @@ def paired_wilcoxon(
     a = np.asarray(full_values, dtype=np.float64)
     b = np.asarray(baseline_values, dtype=np.float64)
     diffs = a - b
-    non_zero_mask = diffs != 0.0
+    non_zero_mask = ~np.isclose(diffs, 0.0, atol=1e-12, rtol=0.0)
     n_non_zero = int(np.sum(non_zero_mask))
 
     result: dict[str, Any] = {
@@ -89,7 +89,7 @@ def paired_wilcoxon(
         "median_diff_full_minus_baseline": float(np.median(diffs)),
         "positive_diffs_count": int(np.sum(diffs > 0.0)),
         "negative_diffs_count": int(np.sum(diffs < 0.0)),
-        "ties_count": int(np.sum(diffs == 0.0)),
+        "ties_count": int(np.sum(~non_zero_mask)),
     }
 
     if n_non_zero == 0:
