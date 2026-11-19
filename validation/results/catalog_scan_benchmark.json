@@ -1,0 +1,1821 @@
+{
+  "metadata": {
+    "timestamp": "2026-11-19T17:43:02.250960+00:00",
+    "execution_environment": {
+      "os": "Windows (win32)",
+      "python_api": "3.12.13",
+      "python_ml": "3.10.10",
+      "database": "PostgreSQL 16 with pgvector on Supabase PaaS (aws-1-us-east-2.pooler.supabase.com:5432)",
+      "llm_provider": "openai",
+      "llm_model": "gpt-4o-mini",
+      "embedding_provider": "voyage",
+      "embedding_model": "voyage-4-lite"
+    },
+    "provenance_hashes": {
+      "devalign_api_head": "99f84e29307f76a66935c7f19cda8868ff5c38f8",
+      "devalign_api_head_date": "2026-11-16T15:27:39-05:00",
+      "devalign_api_evaluated_october": "f80cc40dced849f00b32947f33fa24b7d19f231e",
+      "devalign_scraping_head": "28c9c7bb74a2ba3715dc88a51c0b4caba07a0851",
+      "devalign_scraping_head_date": "2026-11-13T17:41:06-05:00",
+      "devalign_scraping_evaluated_october": "e37f4fb5b2ac0bc14c95b1c0cc29575c19ed62db",
+      "devalign_ml_head": "debb554885ef95ca2f8504a689bba264955a765f",
+      "devalign_ml_head_date": "2026-11-13T19:36:32-05:00",
+      "devalign_ml_evaluated_october": "8df983838e760fc0b341e1dca34604eb21f0a653",
+      "devalign_docs_head": "e63c86b4626845d30919f60cdccac1a3615b4e2a",
+      "devalign_docs_head_date": "2026-11-14T09:13:48-05:00"
+    },
+    "repo_facts": {
+      "endpoints_count": 25,
+      "endpoints_domain_count": 20,
+      "tables_count": 16,
+      "alembic_migrations_count": 26,
+      "alembic_head": "c9d8e7f6a5b4",
+      "pytest_tests_collected_api": 111,
+      "pytest_tests_collected_ml": 14,
+      "pytest_tests_collected_scraping": 97,
+      "pytest_tests_collected_total": 222,
+      "tau_threshold_value": 0.88,
+      "tau_threshold_locations": [
+        "devalign-api/src/ml_engine/application/use_cases.py:1444 (NormalizeJobOffersUseCase: cosine similarity on dense embeddings in pgvector)",
+        "devalign-api/src/ml_engine/application/skill_catalog_service.py:240 (normalize_extracted_skills: difflib SequenceMatcher ratio cutoff for fuzzy fallback)"
+      ],
+      "phase_b_details": {
+        "prompt_purpose": "Synthesize core technical profile (current_job_role, professional_summary, years_experience) without re-extracting skills",
+        "char_limit": 15000,
+        "char_limit_code_reference": "devalign-api/src/ml_engine/application/use_cases.py:540",
+        "stored_fields": [
+          "current_job_role",
+          "years_experience",
+          "professional_summary"
+        ]
+      }
+    }
+  },
+  "task_1_extraction_benchmark": {
+    "old_llm_extractor": {
+      "exact_match_ratio": 0.9333,
+      "exact_match_count": 14,
+      "total_eval_cvs": 15,
+      "total_declared_skills": 196,
+      "total_tp": 194,
+      "total_fp": 0,
+      "total_fn": 2,
+      "macro_metrics": {
+        "precision": 1.0,
+        "recall": 0.9933,
+        "f1_score": 0.9967
+      },
+      "micro_metrics": {
+        "precision": 1.0,
+        "recall": 0.9898,
+        "f1_score": 0.9949
+      },
+      "per_cv_results": [
+        {
+          "id": "cv-001",
+          "role": "Senior Frontend Developer",
+          "seniority": "senior",
+          "ground_truth_count": 20,
+          "extracted_count": 18,
+          "true_positives": 18,
+          "false_positives": 0,
+          "false_negatives": 2,
+          "precision": 1.0,
+          "recall": 0.9,
+          "f1_score": 0.9474,
+          "exact_match": false,
+          "spurious_fps": [],
+          "omitted_fns": [
+            "Axios",
+            "RESTful API"
+          ]
+        },
+        {
+          "id": "cv-002",
+          "role": "Junior Frontend Developer",
+          "seniority": "junior",
+          "ground_truth_count": 9,
+          "extracted_count": 9,
+          "true_positives": 9,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-003",
+          "role": "Mid Frontend Angular Developer",
+          "seniority": "mid",
+          "ground_truth_count": 13,
+          "extracted_count": 13,
+          "true_positives": 13,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-004",
+          "role": "Senior Backend Python Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 15,
+          "extracted_count": 15,
+          "true_positives": 15,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-005",
+          "role": "Junior Python Backend Developer",
+          "seniority": "junior",
+          "ground_truth_count": 10,
+          "extracted_count": 10,
+          "true_positives": 10,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-006",
+          "role": "Senior Java Backend Architect",
+          "seniority": "senior",
+          "ground_truth_count": 17,
+          "extracted_count": 17,
+          "true_positives": 17,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-007",
+          "role": "Mid Java Backend Developer",
+          "seniority": "mid",
+          "ground_truth_count": 11,
+          "extracted_count": 11,
+          "true_positives": 11,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-008",
+          "role": "Senior DevOps & Cloud Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 16,
+          "extracted_count": 16,
+          "true_positives": 16,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-009",
+          "role": "Mid DevOps Engineer",
+          "seniority": "mid",
+          "ground_truth_count": 10,
+          "extracted_count": 10,
+          "true_positives": 10,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-010",
+          "role": "Senior Data Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 13,
+          "extracted_count": 13,
+          "true_positives": 13,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-011",
+          "role": "Mid Data Analyst / BI",
+          "seniority": "mid",
+          "ground_truth_count": 10,
+          "extracted_count": 10,
+          "true_positives": 10,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-012",
+          "role": "Senior Full Stack Developer",
+          "seniority": "senior",
+          "ground_truth_count": 17,
+          "extracted_count": 17,
+          "true_positives": 17,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-013",
+          "role": "Junior Full Stack Developer",
+          "seniority": "junior",
+          "ground_truth_count": 12,
+          "extracted_count": 12,
+          "true_positives": 12,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-014",
+          "role": "Mobile iOS Developer",
+          "seniority": "mid",
+          "ground_truth_count": 11,
+          "extracted_count": 11,
+          "true_positives": 11,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-015",
+          "role": "QA Automation Engineer",
+          "seniority": "mid",
+          "ground_truth_count": 12,
+          "extracted_count": 12,
+          "true_positives": 12,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        }
+      ]
+    },
+    "current_catalog_scan_strict": {
+      "exact_match_ratio": 0.0,
+      "exact_match_count": 0,
+      "total_eval_cvs": 15,
+      "total_declared_skills": 196,
+      "total_tp": 90,
+      "total_fp": 129,
+      "total_fn": 106,
+      "macro_metrics": {
+        "precision": 0.4022,
+        "recall": 0.456,
+        "f1_score": 0.4274
+      },
+      "micro_metrics": {
+        "precision": 0.411,
+        "recall": 0.4592,
+        "f1_score": 0.4337
+      },
+      "per_cv_results": [
+        {
+          "id": "cv-001",
+          "role": "Senior Frontend Developer",
+          "seniority": "senior",
+          "ground_truth_count": 20,
+          "extracted_count": 21,
+          "true_positives": 10,
+          "false_positives": 11,
+          "false_negatives": 10,
+          "precision": 0.4762,
+          "recall": 0.5,
+          "f1_score": 0.4878,
+          "exact_match": false,
+          "spurious_fps": [
+            "Axios (JavaScript Library)",
+            "CI/CD",
+            "Cascading Style Sheets (CSS)",
+            "Docker (Software)",
+            "Git (Version Control System)",
+            "HyperText Markup Language (HTML)",
+            "JavaScript (Programming Language)",
+            "Jest (JavaScript Testing Framework)",
+            "Playwright (Software Testing)",
+            "Styled Components",
+            "Web Applications"
+          ],
+          "omitted_fns": [
+            "Axios",
+            "CSS3",
+            "Docker",
+            "Git",
+            "HTML5",
+            "JavaScript",
+            "Jest",
+            "Playwright",
+            "Redux",
+            "Vitest"
+          ]
+        },
+        {
+          "id": "cv-002",
+          "role": "Junior Frontend Developer",
+          "seniority": "junior",
+          "ground_truth_count": 9,
+          "extracted_count": 13,
+          "true_positives": 4,
+          "false_positives": 9,
+          "false_negatives": 5,
+          "precision": 0.3077,
+          "recall": 0.4444,
+          "f1_score": 0.3636,
+          "exact_match": false,
+          "spurious_fps": [
+            "Cascading Style Sheets (CSS)",
+            "ECMAScript 6 (ES6)",
+            "Git (Version Control System)",
+            "HyperText Markup Language (HTML)",
+            "JavaScript (Programming Language)",
+            "Responsive Web Design",
+            "Sass (Stylesheet Language)",
+            "Semantic HTML",
+            "Web Development"
+          ],
+          "omitted_fns": [
+            "CSS",
+            "Git",
+            "HTML",
+            "JavaScript",
+            "Sass"
+          ]
+        },
+        {
+          "id": "cv-003",
+          "role": "Mid Frontend Angular Developer",
+          "seniority": "mid",
+          "ground_truth_count": 13,
+          "extracted_count": 13,
+          "true_positives": 5,
+          "false_positives": 8,
+          "false_negatives": 8,
+          "precision": 0.3846,
+          "recall": 0.3846,
+          "f1_score": 0.3846,
+          "exact_match": false,
+          "spurious_fps": [
+            "Angular (Web Framework)",
+            "Cascading Style Sheets (CSS)",
+            "Git (Version Control System)",
+            "HyperText Markup Language (HTML)",
+            "Jasmine (JavaScript Testing Framework)",
+            "Karma (JavaScript Testing Framework)",
+            "Playwright (Software Testing)",
+            "Unit Testing"
+          ],
+          "omitted_fns": [
+            "Angular",
+            "CSS3",
+            "Git",
+            "HTML5",
+            "Jasmine",
+            "Karma",
+            "NgRx",
+            "SCSS"
+          ]
+        },
+        {
+          "id": "cv-004",
+          "role": "Senior Backend Python Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 15,
+          "extracted_count": 14,
+          "true_positives": 5,
+          "false_positives": 9,
+          "false_negatives": 10,
+          "precision": 0.3571,
+          "recall": 0.3333,
+          "f1_score": 0.3448,
+          "exact_match": false,
+          "spurious_fps": [
+            "Amazon Web Services",
+            "Docker (Software)",
+            "Docker Compose",
+            "Git (Version Control System)",
+            "Machine Learning",
+            "PyTorch (Machine Learning Library)",
+            "Python (Programming Language)",
+            "Scikit-learn (Machine Learning Library)",
+            "microservices"
+          ],
+          "omitted_fns": [
+            "AWS ECS",
+            "Alembic",
+            "Celery",
+            "Docker",
+            "Git",
+            "PyTorch",
+            "Pydantic",
+            "Python",
+            "SQLAlchemy",
+            "Scikit-Learn"
+          ]
+        },
+        {
+          "id": "cv-005",
+          "role": "Junior Python Backend Developer",
+          "seniority": "junior",
+          "ground_truth_count": 10,
+          "extracted_count": 9,
+          "true_positives": 5,
+          "false_positives": 4,
+          "false_negatives": 5,
+          "precision": 0.5556,
+          "recall": 0.5,
+          "f1_score": 0.5263,
+          "exact_match": false,
+          "spurious_fps": [
+            "Django (Web Framework)",
+            "Git (Version Control System)",
+            "Python (Programming Language)",
+            "Web Applications"
+          ],
+          "omitted_fns": [
+            "Django",
+            "Django REST Framework",
+            "Git",
+            "Python",
+            "SQLite"
+          ]
+        },
+        {
+          "id": "cv-006",
+          "role": "Senior Java Backend Architect",
+          "seniority": "senior",
+          "ground_truth_count": 17,
+          "extracted_count": 20,
+          "true_positives": 9,
+          "false_positives": 11,
+          "false_negatives": 8,
+          "precision": 0.45,
+          "recall": 0.5294,
+          "f1_score": 0.4865,
+          "exact_match": false,
+          "spurious_fps": [
+            "Amazon EKS",
+            "Apache Maven",
+            "Docker (Software)",
+            "Fintech",
+            "Git (Version Control System)",
+            "Hibernate (Java)",
+            "Information Security",
+            "Java (Programming Language)",
+            "OAuth",
+            "Spring",
+            "microservices"
+          ],
+          "omitted_fns": [
+            "Docker",
+            "Git",
+            "Helm",
+            "Hibernate",
+            "JPA",
+            "Java",
+            "Maven",
+            "OAuth2"
+          ]
+        },
+        {
+          "id": "cv-007",
+          "role": "Mid Java Backend Developer",
+          "seniority": "mid",
+          "ground_truth_count": 11,
+          "extracted_count": 15,
+          "true_positives": 7,
+          "false_positives": 8,
+          "false_negatives": 4,
+          "precision": 0.4667,
+          "recall": 0.6364,
+          "f1_score": 0.5385,
+          "exact_match": false,
+          "spurious_fps": [
+            "Apache Maven",
+            "Git (Version Control System)",
+            "Java (Programming Language)",
+            "Postman API Platform",
+            "REST APIs",
+            "Spring",
+            "Spring Data",
+            "Web Services"
+          ],
+          "omitted_fns": [
+            "Git",
+            "Java",
+            "Maven",
+            "Postman"
+          ]
+        },
+        {
+          "id": "cv-008",
+          "role": "Senior DevOps & Cloud Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 16,
+          "extracted_count": 19,
+          "true_positives": 8,
+          "false_positives": 11,
+          "false_negatives": 8,
+          "precision": 0.4211,
+          "recall": 0.5,
+          "f1_score": 0.4571,
+          "exact_match": false,
+          "spurious_fps": [
+            "Bash (Scripting Language)",
+            "CI/CD",
+            "Cloud Infrastructure",
+            "Container Security",
+            "Docker (Software)",
+            "Git (Version Control System)",
+            "GitHub",
+            "GitLab",
+            "Information Security",
+            "Prometheus (Software)",
+            "Python (Programming Language)"
+          ],
+          "omitted_fns": [
+            "ArgoCD",
+            "Bash",
+            "Docker",
+            "Git",
+            "GitLab CI",
+            "Helm",
+            "Prometheus",
+            "Python"
+          ]
+        },
+        {
+          "id": "cv-009",
+          "role": "Mid DevOps Engineer",
+          "seniority": "mid",
+          "ground_truth_count": 10,
+          "extracted_count": 12,
+          "true_positives": 5,
+          "false_positives": 7,
+          "false_negatives": 5,
+          "precision": 0.4167,
+          "recall": 0.5,
+          "f1_score": 0.4545,
+          "exact_match": false,
+          "spurious_fps": [
+            "Bash (Scripting Language)",
+            "CI/CD",
+            "Docker (Software)",
+            "Git (Version Control System)",
+            "GitHub",
+            "Microsoft Azure",
+            "Python (Programming Language)"
+          ],
+          "omitted_fns": [
+            "Azure",
+            "Bash",
+            "Docker",
+            "Git",
+            "Python"
+          ]
+        },
+        {
+          "id": "cv-010",
+          "role": "Senior Data Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 13,
+          "extracted_count": 13,
+          "true_positives": 4,
+          "false_positives": 9,
+          "false_negatives": 9,
+          "precision": 0.3077,
+          "recall": 0.3077,
+          "f1_score": 0.3077,
+          "exact_match": false,
+          "spurious_fps": [
+            "AWS Elastic MapReduce (EMR)",
+            "Amazon S3",
+            "Amazon Web Services",
+            "Docker (Software)",
+            "ETL pipelines",
+            "Git (Version Control System)",
+            "Python (Programming Language)",
+            "SQL (Programming Language)",
+            "Snowflake (Data Warehouse)"
+          ],
+          "omitted_fns": [
+            "AWS EMR",
+            "AWS S3",
+            "Docker",
+            "Git",
+            "PySpark",
+            "Python",
+            "SQL",
+            "Snowflake",
+            "dbt"
+          ]
+        },
+        {
+          "id": "cv-011",
+          "role": "Mid Data Analyst / BI",
+          "seniority": "mid",
+          "ground_truth_count": 10,
+          "extracted_count": 10,
+          "true_positives": 5,
+          "false_positives": 5,
+          "false_negatives": 5,
+          "precision": 0.5,
+          "recall": 0.5,
+          "f1_score": 0.5,
+          "exact_match": false,
+          "spurious_fps": [
+            "Git (Version Control System)",
+            "Pandas (Python Package)",
+            "Python (Programming Language)",
+            "SQL (Programming Language)",
+            "Tableau (Business Intelligence Software)"
+          ],
+          "omitted_fns": [
+            "Git",
+            "Pandas",
+            "Python",
+            "SQL",
+            "Tableau"
+          ]
+        },
+        {
+          "id": "cv-012",
+          "role": "Senior Full Stack Developer",
+          "seniority": "senior",
+          "ground_truth_count": 17,
+          "extracted_count": 21,
+          "true_positives": 9,
+          "false_positives": 12,
+          "false_negatives": 8,
+          "precision": 0.4286,
+          "recall": 0.5294,
+          "f1_score": 0.4737,
+          "exact_match": false,
+          "spurious_fps": [
+            "Amazon S3",
+            "Amazon Web Services",
+            "Cascading Style Sheets (CSS)",
+            "Docker (Software)",
+            "Git (Version Control System)",
+            "GitHub",
+            "JavaScript (Programming Language)",
+            "Jest (JavaScript Testing Framework)",
+            "Playwright (Software Testing)",
+            "RESTful API",
+            "Web Applications",
+            "microservices"
+          ],
+          "omitted_fns": [
+            "AWS EC2",
+            "AWS S3",
+            "Docker",
+            "Git",
+            "JavaScript",
+            "Jest",
+            "Prisma",
+            "Supertest"
+          ]
+        },
+        {
+          "id": "cv-013",
+          "role": "Junior Full Stack Developer",
+          "seniority": "junior",
+          "ground_truth_count": 12,
+          "extracted_count": 14,
+          "true_positives": 6,
+          "false_positives": 8,
+          "false_negatives": 6,
+          "precision": 0.4286,
+          "recall": 0.5,
+          "f1_score": 0.4615,
+          "exact_match": false,
+          "spurious_fps": [
+            "Cascading Style Sheets (CSS)",
+            "Git (Version Control System)",
+            "HyperText Markup Language (HTML)",
+            "JavaScript (Programming Language)",
+            "Mongoose (Software)",
+            "NoSQL",
+            "Postman API Platform",
+            "Web Applications"
+          ],
+          "omitted_fns": [
+            "CSS3",
+            "Git",
+            "HTML5",
+            "JavaScript",
+            "Mongoose",
+            "Postman"
+          ]
+        },
+        {
+          "id": "cv-014",
+          "role": "Mobile iOS Developer",
+          "seniority": "mid",
+          "ground_truth_count": 11,
+          "extracted_count": 7,
+          "true_positives": 1,
+          "false_positives": 6,
+          "false_negatives": 10,
+          "precision": 0.1429,
+          "recall": 0.0909,
+          "f1_score": 0.1111,
+          "exact_match": false,
+          "spurious_fps": [
+            "Apple IOS",
+            "Core Data (Software)",
+            "Git (Version Control System)",
+            "IOS Applications",
+            "Model-View-ViewModel (MVVM)",
+            "Swift (Programming Language)"
+          ],
+          "omitted_fns": [
+            "Alamofire",
+            "CocoaPods",
+            "Combine",
+            "CoreData",
+            "Fastlane",
+            "Git",
+            "Swift",
+            "SwiftUI",
+            "Xcode",
+            "iOS"
+          ]
+        },
+        {
+          "id": "cv-015",
+          "role": "QA Automation Engineer",
+          "seniority": "mid",
+          "ground_truth_count": 12,
+          "extracted_count": 18,
+          "true_positives": 7,
+          "false_positives": 11,
+          "false_negatives": 5,
+          "precision": 0.3889,
+          "recall": 0.5833,
+          "f1_score": 0.4667,
+          "exact_match": false,
+          "spurious_fps": [
+            "CI/CD",
+            "Git (Version Control System)",
+            "Integration Testing",
+            "Playwright (Software Testing)",
+            "Postman API Platform",
+            "Python (Programming Language)",
+            "Quality Assurance (QA)",
+            "SQC)",
+            "SQL (Programming Language)",
+            "Selenium (Software)",
+            "Software Quality (SQA/SQC)"
+          ],
+          "omitted_fns": [
+            "Git",
+            "Postman",
+            "Python",
+            "SQL",
+            "Selenium"
+          ]
+        }
+      ]
+    },
+    "current_catalog_scan_canonical": {
+      "exact_match_ratio": 0.0667,
+      "exact_match_count": 1,
+      "total_eval_cvs": 15,
+      "total_declared_skills": 196,
+      "total_tp": 169,
+      "total_fp": 50,
+      "total_fn": 27,
+      "macro_metrics": {
+        "precision": 0.7834,
+        "recall": 0.8688,
+        "f1_score": 0.8239
+      },
+      "micro_metrics": {
+        "precision": 0.7717,
+        "recall": 0.8622,
+        "f1_score": 0.8145
+      },
+      "per_cv_results": [
+        {
+          "id": "cv-001",
+          "role": "Senior Frontend Developer",
+          "seniority": "senior",
+          "ground_truth_count": 20,
+          "extracted_count": 21,
+          "true_positives": 18,
+          "false_positives": 3,
+          "false_negatives": 2,
+          "precision": 0.8571,
+          "recall": 0.9,
+          "f1_score": 0.878,
+          "exact_match": false,
+          "spurious_fps": [
+            "CI/CD",
+            "Styled Components",
+            "Web Applications"
+          ],
+          "omitted_fns": [
+            "Redux",
+            "Vitest"
+          ]
+        },
+        {
+          "id": "cv-002",
+          "role": "Junior Frontend Developer",
+          "seniority": "junior",
+          "ground_truth_count": 9,
+          "extracted_count": 13,
+          "true_positives": 9,
+          "false_positives": 4,
+          "false_negatives": 0,
+          "precision": 0.6923,
+          "recall": 1.0,
+          "f1_score": 0.8182,
+          "exact_match": false,
+          "spurious_fps": [
+            "ECMAScript 6 (ES6)",
+            "Responsive Web Design",
+            "Semantic HTML",
+            "Web Development"
+          ],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-003",
+          "role": "Mid Frontend Angular Developer",
+          "seniority": "mid",
+          "ground_truth_count": 13,
+          "extracted_count": 13,
+          "true_positives": 11,
+          "false_positives": 2,
+          "false_negatives": 2,
+          "precision": 0.8462,
+          "recall": 0.8462,
+          "f1_score": 0.8462,
+          "exact_match": false,
+          "spurious_fps": [
+            "Playwright (Software Testing)",
+            "Unit Testing"
+          ],
+          "omitted_fns": [
+            "NgRx",
+            "SCSS"
+          ]
+        },
+        {
+          "id": "cv-004",
+          "role": "Senior Backend Python Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 15,
+          "extracted_count": 14,
+          "true_positives": 10,
+          "false_positives": 4,
+          "false_negatives": 5,
+          "precision": 0.7143,
+          "recall": 0.6667,
+          "f1_score": 0.6897,
+          "exact_match": false,
+          "spurious_fps": [
+            "Amazon Web Services",
+            "Docker Compose",
+            "Machine Learning",
+            "microservices"
+          ],
+          "omitted_fns": [
+            "AWS ECS",
+            "Alembic",
+            "Celery",
+            "Pydantic",
+            "SQLAlchemy"
+          ]
+        },
+        {
+          "id": "cv-005",
+          "role": "Junior Python Backend Developer",
+          "seniority": "junior",
+          "ground_truth_count": 10,
+          "extracted_count": 9,
+          "true_positives": 8,
+          "false_positives": 1,
+          "false_negatives": 2,
+          "precision": 0.8889,
+          "recall": 0.8,
+          "f1_score": 0.8421,
+          "exact_match": false,
+          "spurious_fps": [
+            "Web Applications"
+          ],
+          "omitted_fns": [
+            "Django REST Framework",
+            "SQLite"
+          ]
+        },
+        {
+          "id": "cv-006",
+          "role": "Senior Java Backend Architect",
+          "seniority": "senior",
+          "ground_truth_count": 17,
+          "extracted_count": 20,
+          "true_positives": 15,
+          "false_positives": 5,
+          "false_negatives": 2,
+          "precision": 0.75,
+          "recall": 0.8824,
+          "f1_score": 0.8108,
+          "exact_match": false,
+          "spurious_fps": [
+            "Amazon EKS",
+            "Fintech",
+            "Information Security",
+            "Spring",
+            "microservices"
+          ],
+          "omitted_fns": [
+            "Helm",
+            "JPA"
+          ]
+        },
+        {
+          "id": "cv-007",
+          "role": "Mid Java Backend Developer",
+          "seniority": "mid",
+          "ground_truth_count": 11,
+          "extracted_count": 15,
+          "true_positives": 11,
+          "false_positives": 4,
+          "false_negatives": 0,
+          "precision": 0.7333,
+          "recall": 1.0,
+          "f1_score": 0.8462,
+          "exact_match": false,
+          "spurious_fps": [
+            "REST APIs",
+            "Spring",
+            "Spring Data",
+            "Web Services"
+          ],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-008",
+          "role": "Senior DevOps & Cloud Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 16,
+          "extracted_count": 19,
+          "true_positives": 13,
+          "false_positives": 6,
+          "false_negatives": 3,
+          "precision": 0.6842,
+          "recall": 0.8125,
+          "f1_score": 0.7429,
+          "exact_match": false,
+          "spurious_fps": [
+            "CI/CD",
+            "Cloud Infrastructure",
+            "Container Security",
+            "GitHub",
+            "GitLab",
+            "Information Security"
+          ],
+          "omitted_fns": [
+            "ArgoCD",
+            "GitLab CI",
+            "Helm"
+          ]
+        },
+        {
+          "id": "cv-009",
+          "role": "Mid DevOps Engineer",
+          "seniority": "mid",
+          "ground_truth_count": 10,
+          "extracted_count": 12,
+          "true_positives": 10,
+          "false_positives": 2,
+          "false_negatives": 0,
+          "precision": 0.8333,
+          "recall": 1.0,
+          "f1_score": 0.9091,
+          "exact_match": false,
+          "spurious_fps": [
+            "CI/CD",
+            "GitHub"
+          ],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-010",
+          "role": "Senior Data Engineer",
+          "seniority": "senior",
+          "ground_truth_count": 13,
+          "extracted_count": 13,
+          "true_positives": 11,
+          "false_positives": 2,
+          "false_negatives": 2,
+          "precision": 0.8462,
+          "recall": 0.8462,
+          "f1_score": 0.8462,
+          "exact_match": false,
+          "spurious_fps": [
+            "Amazon Web Services",
+            "ETL pipelines"
+          ],
+          "omitted_fns": [
+            "PySpark",
+            "dbt"
+          ]
+        },
+        {
+          "id": "cv-011",
+          "role": "Mid Data Analyst / BI",
+          "seniority": "mid",
+          "ground_truth_count": 10,
+          "extracted_count": 10,
+          "true_positives": 10,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "exact_match": true,
+          "spurious_fps": [],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-012",
+          "role": "Senior Full Stack Developer",
+          "seniority": "senior",
+          "ground_truth_count": 17,
+          "extracted_count": 21,
+          "true_positives": 14,
+          "false_positives": 7,
+          "false_negatives": 3,
+          "precision": 0.6667,
+          "recall": 0.8235,
+          "f1_score": 0.7368,
+          "exact_match": false,
+          "spurious_fps": [
+            "Amazon Web Services",
+            "Cascading Style Sheets (CSS)",
+            "GitHub",
+            "Playwright (Software Testing)",
+            "RESTful API",
+            "Web Applications",
+            "microservices"
+          ],
+          "omitted_fns": [
+            "AWS EC2",
+            "Prisma",
+            "Supertest"
+          ]
+        },
+        {
+          "id": "cv-013",
+          "role": "Junior Full Stack Developer",
+          "seniority": "junior",
+          "ground_truth_count": 12,
+          "extracted_count": 14,
+          "true_positives": 12,
+          "false_positives": 2,
+          "false_negatives": 0,
+          "precision": 0.8571,
+          "recall": 1.0,
+          "f1_score": 0.9231,
+          "exact_match": false,
+          "spurious_fps": [
+            "NoSQL",
+            "Web Applications"
+          ],
+          "omitted_fns": []
+        },
+        {
+          "id": "cv-014",
+          "role": "Mobile iOS Developer",
+          "seniority": "mid",
+          "ground_truth_count": 11,
+          "extracted_count": 7,
+          "true_positives": 5,
+          "false_positives": 2,
+          "false_negatives": 6,
+          "precision": 0.7143,
+          "recall": 0.4545,
+          "f1_score": 0.5556,
+          "exact_match": false,
+          "spurious_fps": [
+            "IOS Applications",
+            "Model-View-ViewModel (MVVM)"
+          ],
+          "omitted_fns": [
+            "Alamofire",
+            "CocoaPods",
+            "Combine",
+            "Fastlane",
+            "SwiftUI",
+            "Xcode"
+          ]
+        },
+        {
+          "id": "cv-015",
+          "role": "QA Automation Engineer",
+          "seniority": "mid",
+          "ground_truth_count": 12,
+          "extracted_count": 18,
+          "true_positives": 12,
+          "false_positives": 6,
+          "false_negatives": 0,
+          "precision": 0.6667,
+          "recall": 1.0,
+          "f1_score": 0.8,
+          "exact_match": false,
+          "spurious_fps": [
+            "CI/CD",
+            "Integration Testing",
+            "Playwright (Software Testing)",
+            "Quality Assurance (QA)",
+            "SQC)",
+            "Software Quality (SQA/SQC)"
+          ],
+          "omitted_fns": []
+        }
+      ]
+    },
+    "simulated_human_validation": {
+      "exact_match_ratio": 1.0,
+      "exact_match_count": 15,
+      "micro_metrics": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0
+      },
+      "macro_metrics": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0
+      },
+      "user_added_custom_skills_total": 27,
+      "user_added_custom_skills_per_cv_mean": 1.8,
+      "user_dismissed_spurious_chips_total": 50,
+      "user_dismissed_spurious_chips_per_cv_mean": 3.33
+    },
+    "fn_diagnostics_by_cv": {
+      "cv-001": [
+        {
+          "skill": "Redux",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Vitest",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-002": [],
+      "cv-003": [
+        {
+          "skill": "NgRx",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "SCSS",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-004": [
+        {
+          "skill": "AWS ECS",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Alembic",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Celery",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Pydantic",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "SQLAlchemy",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-005": [
+        {
+          "skill": "Django REST Framework",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "SQLite",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-006": [
+        {
+          "skill": "Helm",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "JPA",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-007": [],
+      "cv-008": [
+        {
+          "skill": "ArgoCD",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "GitLab CI",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Helm",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-009": [],
+      "cv-010": [
+        {
+          "skill": "PySpark",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "dbt",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-011": [],
+      "cv-012": [
+        {
+          "skill": "AWS EC2",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Prisma",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Supertest",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-013": [],
+      "cv-014": [
+        {
+          "skill": "Alamofire",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "CocoaPods",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Combine",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Fastlane",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "SwiftUI",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        },
+        {
+          "skill": "Xcode",
+          "cause": "Out-of-catalog technology (custom skill requiring human gate)",
+          "in_catalog": false
+        }
+      ],
+      "cv-015": []
+    },
+    "fp_diagnostics_by_cv": {
+      "cv-001": [
+        {
+          "skill": "CI/CD",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Styled Components",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Web Applications",
+          "cause": "Broad occupational / conceptual catalog match in full CV text"
+        }
+      ],
+      "cv-002": [
+        {
+          "skill": "ECMAScript 6 (ES6)",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Responsive Web Design",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Semantic HTML",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Web Development",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-003": [
+        {
+          "skill": "Playwright (Software Testing)",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Unit Testing",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-004": [
+        {
+          "skill": "Amazon Web Services",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Docker Compose",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Machine Learning",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "microservices",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-005": [
+        {
+          "skill": "Web Applications",
+          "cause": "Broad occupational / conceptual catalog match in full CV text"
+        }
+      ],
+      "cv-006": [
+        {
+          "skill": "Amazon EKS",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Fintech",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Information Security",
+          "cause": "Broad occupational / conceptual catalog match in full CV text"
+        },
+        {
+          "skill": "Spring",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "microservices",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-007": [
+        {
+          "skill": "REST APIs",
+          "cause": "Over-generic alias matching catalog technology"
+        },
+        {
+          "skill": "Spring",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Spring Data",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Web Services",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-008": [
+        {
+          "skill": "CI/CD",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Cloud Infrastructure",
+          "cause": "Broad occupational / conceptual catalog match in full CV text"
+        },
+        {
+          "skill": "Container Security",
+          "cause": "Broad occupational / conceptual catalog match in full CV text"
+        },
+        {
+          "skill": "GitHub",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "GitLab",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Information Security",
+          "cause": "Broad occupational / conceptual catalog match in full CV text"
+        }
+      ],
+      "cv-009": [
+        {
+          "skill": "CI/CD",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "GitHub",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-010": [
+        {
+          "skill": "Amazon Web Services",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "ETL pipelines",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-011": [],
+      "cv-012": [
+        {
+          "skill": "Amazon Web Services",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Cascading Style Sheets (CSS)",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "GitHub",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Playwright (Software Testing)",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "RESTful API",
+          "cause": "Over-generic alias matching catalog technology"
+        },
+        {
+          "skill": "Web Applications",
+          "cause": "Broad occupational / conceptual catalog match in full CV text"
+        },
+        {
+          "skill": "microservices",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-013": [
+        {
+          "skill": "NoSQL",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Web Applications",
+          "cause": "Broad occupational / conceptual catalog match in full CV text"
+        }
+      ],
+      "cv-014": [
+        {
+          "skill": "IOS Applications",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Model-View-ViewModel (MVVM)",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        }
+      ],
+      "cv-015": [
+        {
+          "skill": "CI/CD",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Integration Testing",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Playwright (Software Testing)",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "Quality Assurance (QA)",
+          "cause": "Catalog technology mentioned in experience section but outside ground-truth scope"
+        },
+        {
+          "skill": "SQC)",
+          "cause": "Lexical token / boundary collision in text parsing"
+        },
+        {
+          "skill": "Software Quality (SQA/SQC)",
+          "cause": "Lexical token / boundary collision in text parsing"
+        }
+      ]
+    }
+  },
+  "task_2_latency_benchmarks": {
+    "pdf_parsing": {
+      "mean": 0.0285,
+      "std": 0.0398,
+      "p50": 0.0218,
+      "p95": 0.0394,
+      "min": 0.0129,
+      "max": 0.3363,
+      "samples": 75
+    },
+    "docx_parsing": {
+      "mean": 0.0131,
+      "std": 0.0025,
+      "p50": 0.0124,
+      "p95": 0.0181,
+      "min": 0.0096,
+      "max": 0.0212,
+      "samples": 75
+    },
+    "catalog_scan": {
+      "mean": 0.612,
+      "std": 0.1064,
+      "p50": 0.615,
+      "p95": 0.7341,
+      "min": 0.4595,
+      "max": 1.209,
+      "samples": 75
+    },
+    "semantic_normalization_in_memory": {
+      "mean": 0.0293,
+      "std": 0.0092,
+      "p50": 0.027,
+      "p95": 0.0505,
+      "min": 0.0191,
+      "max": 0.0643,
+      "samples": 75
+    },
+    "semantic_normalization_pgvector": {
+      "mean": 0.0,
+      "std": 0.0,
+      "p95": 0.0,
+      "status": "bypassed_in_cv_path",
+      "explanation": "scan_text_for_catalog_skills matches canonical terms directly; pgvector is only called in offer ingestion (NormalizeJobOffersUseCase) and sensitivity sweeps"
+    },
+    "graph_inference_and_affinity": {
+      "mean": 0.0084,
+      "std": 0.0024,
+      "p50": 0.0081,
+      "p95": 0.0131,
+      "min": 0.0045,
+      "max": 0.0165,
+      "samples": 75
+    },
+    "interactive_phase_total_up_to_skills_detected": {
+      "mean": 0.6698,
+      "std": 0.1215,
+      "p50": 0.6708,
+      "p95": 0.8101,
+      "min": 0.4923,
+      "max": 1.2856,
+      "samples": 75
+    },
+    "phase_b_llm_insights": {
+      "mean": 1.6775,
+      "std": 0.4424,
+      "p50": 1.5606,
+      "p95": 2.2395,
+      "min": 1.1664,
+      "max": 3.0034,
+      "samples": 15,
+      "success_rate": 100.0,
+      "execution_mode": "asynchronous_fastapi_background_task",
+      "blocking_behavior": "Immediate HTTP 202 on CV upload; Phase A sets 'skills_detected_partial'; Phase B finishes before final diagnosis persistence (finalize endpoint blocks if status != 'skills_detected')"
+    }
+  },
+  "task_3_phase_b_eval": {
+    "success_rate": "100.0%",
+    "total_runs": 15,
+    "exact_or_substring_role_matches": "14/15",
+    "ground_truth_years_present": false,
+    "notes": "ground_truth_cvs.json contains categorical 'role' and 'seniority', but lacks explicit numeric ground truth for years_experience. Extracted values are reported per CV.",
+    "per_cv_outputs": {
+      "cv-001": {
+        "role_in_gt": "Senior Frontend Developer",
+        "current_job_role_extracted": "Staff Frontend Engineer",
+        "years_experience_extracted": 7,
+        "summary_extracted": "Experienced Frontend Engineer with over 7 years in developing high-performance web applications using modern JavaScript and TypeScript frameworks, specializing in React and Next.js.",
+        "latency_s": 3.0034,
+        "success": true
+      },
+      "cv-002": {
+        "role_in_gt": "Junior Frontend Developer",
+        "current_job_role_extracted": "Frontend Trainee",
+        "years_experience_extracted": 1,
+        "summary_extracted": "Enthusiastic frontend developer with experience in creating responsive user interfaces using modern web technologies.",
+        "latency_s": 1.4138,
+        "success": true
+      },
+      "cv-003": {
+        "role_in_gt": "Mid Frontend Angular Developer",
+        "current_job_role_extracted": "Software Engineer",
+        "years_experience_extracted": 4,
+        "summary_extracted": "Frontend Developer with 4 years of experience specializing in Angular and TypeScript for enterprise solutions. Proficient in building reactive applications using modern frontend technologies.",
+        "latency_s": 1.892,
+        "success": true
+      },
+      "cv-004": {
+        "role_in_gt": "Senior Backend Python Engineer",
+        "current_job_role_extracted": "Senior Backend Engineer",
+        "years_experience_extracted": 6,
+        "summary_extracted": "Experienced Senior Python & Backend Engineer with 6 years of expertise in building distributed backend APIs and asynchronous services using Python and related technologies.",
+        "latency_s": 1.1664,
+        "success": true
+      },
+      "cv-005": {
+        "role_in_gt": "Junior Python Backend Developer",
+        "current_job_role_extracted": "Junior Developer",
+        "years_experience_extracted": 1,
+        "summary_extracted": "Software engineering graduate with experience in developing web applications using Python and Django, focusing on RESTful services and database integration.",
+        "latency_s": 1.7702,
+        "success": true
+      },
+      "cv-006": {
+        "role_in_gt": "Senior Java Backend Architect",
+        "current_job_role_extracted": "Lead Java Software Architect",
+        "years_experience_extracted": 8,
+        "summary_extracted": "Experienced Lead Java Software Architect with over 8 years in designing scalable microservices architectures using the Java and Spring ecosystem. Proficient in deploying and optimizing services in cloud environments with a strong focus on security and data persistence.",
+        "latency_s": 1.9121,
+        "success": true
+      },
+      "cv-007": {
+        "role_in_gt": "Mid Java Backend Developer",
+        "current_job_role_extracted": "Backend Engineer",
+        "years_experience_extracted": 3,
+        "summary_extracted": "Java Backend Developer with 3.5 years of experience in developing enterprise applications and REST APIs using Java and Spring Boot.",
+        "latency_s": 1.523,
+        "success": true
+      },
+      "cv-008": {
+        "role_in_gt": "Senior DevOps & Cloud Engineer",
+        "current_job_role_extracted": "Lead DevOps Engineer",
+        "years_experience_extracted": 7,
+        "summary_extracted": "DevOps & Cloud Infrastructure Engineer with 7 years of experience specializing in Cloud Infrastructure, GitOps, and automation. Proficient in AWS, Terraform, and Kubernetes, with a strong focus on CI/CD pipeline development and infrastructure automation.",
+        "latency_s": 1.6688,
+        "success": true
+      },
+      "cv-009": {
+        "role_in_gt": "Mid DevOps Engineer",
+        "current_job_role_extracted": "DevOps Engineer",
+        "years_experience_extracted": 3,
+        "summary_extracted": "DevOps Engineer with 3 years of experience in automating software delivery pipelines and managing cloud resources, specializing in Azure and CI/CD tools.",
+        "latency_s": 1.5606,
+        "success": true
+      },
+      "cv-010": {
+        "role_in_gt": "Senior Data Engineer",
+        "current_job_role_extracted": "Senior Data Engineer",
+        "years_experience_extracted": 6,
+        "summary_extracted": "Experienced Senior Data Engineer with 6 years of expertise in building scalable big data processing pipelines using Python, PySpark, and Apache Spark on AWS. Proficient in orchestrating workflows with Apache Airflow and designing data models in Snowflake.",
+        "latency_s": 1.2559,
+        "success": true
+      },
+      "cv-011": {
+        "role_in_gt": "Mid Data Analyst / BI",
+        "current_job_role_extracted": "BI Analyst",
+        "years_experience_extracted": 3,
+        "summary_extracted": "Business Intelligence & Data Analyst with 3 years of experience in creating actionable dashboards and statistical reports using tools like Power BI and Tableau, alongside strong SQL and Python skills.",
+        "latency_s": 1.4011,
+        "success": true
+      },
+      "cv-012": {
+        "role_in_gt": "Senior Full Stack Developer",
+        "current_job_role_extracted": "Lead Full Stack Engineer",
+        "years_experience_extracted": 6,
+        "summary_extracted": "Experienced Full Stack Engineer with 6 years in developing web applications using React, Node.js, and TypeScript. Proficient in building scalable microservices and deploying applications on AWS.",
+        "latency_s": 1.4844,
+        "success": true
+      },
+      "cv-013": {
+        "role_in_gt": "Junior Full Stack Developer",
+        "current_job_role_extracted": "Junior Full Stack Developer",
+        "years_experience_extracted": 1,
+        "summary_extracted": "Junior Full Stack Developer with 1.5 years of experience in building modern web applications using the MERN stack (MongoDB, Express, React, Node.js). Proficient in frontend and backend development, version control, and RESTful API integration.",
+        "latency_s": 1.9053,
+        "success": true
+      },
+      "cv-014": {
+        "role_in_gt": "Mobile iOS Developer",
+        "current_job_role_extracted": "Mobile Engineer",
+        "years_experience_extracted": 4,
+        "summary_extracted": "iOS Mobile Developer with 4 years of experience in engineering native mobile apps using Swift and SwiftUI. Proficient in MVVM architecture and managing asynchronous data streams.",
+        "latency_s": 1.329,
+        "success": true
+      },
+      "cv-015": {
+        "role_in_gt": "QA Automation Engineer",
+        "current_job_role_extracted": "QA Automation Engineer",
+        "years_experience_extracted": 4,
+        "summary_extracted": "Experienced QA Automation Engineer with 4 years in software quality assurance, specializing in building automated test frameworks for web and APIs using tools like Selenium and Python.",
+        "latency_s": 1.8765,
+        "success": true
+      }
+    }
+  }
+}
